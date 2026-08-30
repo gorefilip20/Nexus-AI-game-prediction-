@@ -1,0 +1,34 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-nexus-bg: #0f212e;
+  --color-nexus-panel: #1a2c38;
+  --color-nexus-border: #213743;
+  --color-nexus-border-strong: #2f4553;
+  --color-nexus-accent: #00e701;
+  --color-nexus-muted: #8a96a3;
+  --color-nexus-text: #b1b6c0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-nexus-bg);
+}
+
+/* Slim scrollbars keep the chat column consistent with the dark panels. */
+.nexus-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+.nexus-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.nexus-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-nexus-border);
+  border-radius: 9999px;
+}
