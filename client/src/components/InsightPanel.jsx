@@ -20,8 +20,8 @@ function ValueTable({ value, homeName, awayName }) {
   const labels = { Home: homeName, Draw: 'Draw', Away: awayName };
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-left text-[11px]">
+    <div className="-mx-1 overflow-x-auto px-1">
+      <table className="w-full min-w-[320px] border-collapse text-left text-[11px]">
         <thead>
           <tr className="border-b border-[#213743] text-[10px] uppercase tracking-wider text-[#8a96a3]">
             <th scope="col" className="py-1.5 pr-3">Outcome</th>
@@ -84,7 +84,7 @@ export default function InsightPanel({ insight, homeName, awayName }) {
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
         aria-controls={panelId}
-        className="flex w-full items-center justify-between px-3 py-2.5 text-left transition hover:bg-[#213743]/30"
+        className="flex min-h-[44px] w-full items-center justify-between px-3 py-2.5 text-left transition hover:bg-[#213743]/30"
       >
         <span className="flex items-center gap-2">
           <Brain className="h-4 w-4 text-[#00e701]" />

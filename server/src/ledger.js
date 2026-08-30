@@ -96,6 +96,9 @@ class PredictionLedger {
         status: 'PENDING',
         settledAt: null,
         result: null,
+        // Set once a settlement notification has been delivered, so a repeated
+        // settlement pass cannot send the same card twice.
+        notifiedAt: null,
       });
       added += 1;
     }
@@ -110,9 +113,13 @@ class PredictionLedger {
       .map(({ sport, id }) => ({ sport, id }));
   }
 
-  /** Grades pending picks against finished fixtures. Returns how many settled. */
+  /**
+   * Grades pending picks against finished fixtures.
+   * @returns {{settled: number, entries: object[]}} the entries just graded, so
+   *   the caller can notify on them without rescanning the whole ledger.
+   */
   settle(results) {
-    let settled = 0;
+    const graded = [];
 
     for (const entry of this.entries.values()) {
       if (entry.status !== 'PENDING') continue;
@@ -130,10 +137,18 @@ class PredictionLedger {
       // An unscored "finished" fixture (abandoned, walkover) grades as VOID so
       // it neither flatters nor penalises the record.
       entry.status = actual === null ? 'VOID' : actual === entry.pickLabel ? 'WIN' : 'LOSS';
-      settled += 1;
+      graded.push(entry);
     }
 
-    return settled;
+    return { settled: graded.length, entries: graded };
+  }
+
+  /** Entries that settled but whose notification has not been delivered yet. */
+  unnotified(statuses = ['WIN']) {
+    const wanted = new Set(statuses.map((s) => String(s).toUpperCase()));
+    return [...this.entries.values()].filter(
+      (entry) => !entry.notifiedAt && wanted.has(String(entry.status).toUpperCase()),
+    );
   }
 
   /** Tracker figures derived entirely from settled picks. */

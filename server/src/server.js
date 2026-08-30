@@ -12,6 +12,8 @@ const { buildBoard } = require('./board');
 const { searchFixtures } = require('./search');
 const { PredictionLedger, DEFAULT_PATH } = require('./ledger');
 const { PunterLounge } = require('./lounge');
+const { createNotifier, createChannelsFromConfig } = require('./notify');
+const { BoardSnapshot, isBudgetExhaustion } = require('./snapshot');
 
 const CLIENT_DIST = path.resolve(__dirname, '..', '..', 'client', 'dist');
 
@@ -71,6 +73,21 @@ async function buildServer({ logger = buildLoggerOptions() } = {}) {
     logger: app.log,
   });
 
+  // Continuity buffer: the last good board, served when the budget is spent.
+  const snapshot = new BoardSnapshot({ logger: app.log });
+
+  const notifier = createNotifier({
+    channels: createChannelsFromConfig(config.notifications, { logger: app.log }),
+    statuses: config.notifications.statuses,
+    logger: app.log,
+  });
+
+  if (notifier.enabled) {
+    app.log.info(
+      `Settlement notifications enabled via ${notifier.channelNames.join(', ')} for ${notifier.statuses.join('/')}`,
+    );
+  }
+
   await app.register(require('@fastify/helmet'), {
     // The SPA loads only its own bundle. Styles need inline because Tailwind's
     // custom properties and the base reset are applied that way.
@@ -117,18 +134,48 @@ async function buildServer({ logger = buildLoggerOptions() } = {}) {
    * scheduler: a pick is only ever graded if it was actually shown.
    */
   async function loadBoard() {
-    const board = await buildBoard({
-      provider,
-      logger: app.log,
-      modelEnabled: config.modelEnabled,
-    });
+    try {
+      const board = await buildBoard({
+        provider,
+        logger: app.log,
+        modelEnabled: config.modelEnabled,
+      });
 
-    if (provider.live) {
-      await ledger.load();
-      if (ledger.record(board.slips) > 0) await ledger.save();
+      // A board with no slips is a degraded result, not a good one: keeping it
+      // would overwrite a usable snapshot with an empty screen.
+      if (board.slips.length > 0) {
+        snapshot.store(board);
+
+        if (provider.live) {
+          await ledger.load();
+          if (ledger.record(board.slips) > 0) await ledger.save();
+        }
+
+        return board;
+      }
+
+      const cached = snapshot.read('no fixtures returned by the provider');
+      if (cached) {
+        app.log.warn('Serving the cached board: the provider returned no fixtures.');
+        return cached;
+      }
+
+      return board;
+    } catch (err) {
+      const reason = isBudgetExhaustion(err)
+        ? 'the daily request budget is spent; live updates resume at 00:00 UTC'
+        : `live data unavailable (${err.message})`;
+
+      const cached = snapshot.read(reason);
+      if (cached) {
+        app.log.warn(`Serving the cached board: ${reason}`);
+        return cached;
+      }
+
+      // Nothing cached yet — the caller reports the failure honestly rather
+      // than inventing a board.
+      throw err;
     }
-
-    return board;
   }
 
   /** Grades every pending pick whose fixture has finished. */
@@ -140,13 +187,26 @@ async function buildServer({ logger = buildLoggerOptions() } = {}) {
     if (pending.length === 0) return { settled: 0 };
 
     const results = await provider.getResults(pending);
-    const settled = ledger.settle(results);
+    const { settled } = ledger.settle(results);
+
     if (settled > 0) {
       await ledger.save();
       app.log.info(`Settled ${settled} prediction(s).`);
     }
 
-    return { settled };
+    // Notify on everything still undelivered, not just this pass's entries: a
+    // channel outage during an earlier pass would otherwise lose those cards.
+    let notified = { sent: 0, failed: 0 };
+    if (notifier.enabled) {
+      const pendingCards = ledger.unnotified(notifier.statuses);
+      if (pendingCards.length > 0) {
+        notified = await notifier.notifySettled(pendingCards, ledger.summary());
+        // notifiedAt is written onto the entries, so persist the acknowledgement.
+        if (notified.sent > 0) await ledger.save();
+      }
+    }
+
+    return { settled, notified: { sent: notified.sent, failed: notified.failed } };
   }
 
   app.get('/api/health', async () => ({
@@ -166,6 +226,12 @@ async function buildServer({ logger = buildLoggerOptions() } = {}) {
     // rate-limit pause. This is the signal to watch for 24/7 continuity.
     quotaDetail: provider.getQuotaDetail?.() ?? null,
     egress: config.egress.proxyUrl ? 'static proxy' : 'direct',
+    snapshot: snapshot.describe(),
+    notifications: {
+      enabled: notifier.enabled,
+      channels: notifier.channelNames,
+      statuses: notifier.statuses,
+    },
     modelEnabled: config.modelEnabled,
     settlementIntervalMs: config.settlementIntervalMs,
   }));
@@ -182,6 +248,13 @@ async function buildServer({ logger = buildLoggerOptions() } = {}) {
         modelEnabled: board.modelEnabled,
         modelNotes: board.modelNotes ?? [],
         quota: board.quota,
+        // Set when this response came from the continuity buffer rather than a
+        // fresh fetch, with how old it is and when live updates resume.
+        stale: board.stale ?? false,
+        staleReason: board.staleReason ?? null,
+        cachedAt: board.cachedAt ?? null,
+        ageSeconds: board.ageSeconds ?? null,
+        liveUpdatesResumeAt: board.liveUpdatesResumeAt ?? null,
         predictions: board.slips,
       };
     } catch (err) {
@@ -300,7 +373,7 @@ async function buildServer({ logger = buildLoggerOptions() } = {}) {
   }
 
   // Exposed for the start/shutdown path and for tests driving the app directly.
-  app.decorate('nexus', { lounge, provider, ledger, runSettlement, loadBoard });
+  app.decorate('nexus', { lounge, provider, ledger, notifier, snapshot, runSettlement, loadBoard });
 
   return app;
 }

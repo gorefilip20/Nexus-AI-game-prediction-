@@ -58,40 +58,44 @@ export default function ChatPanel({ messages, online, status, notice, onSend, us
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
-      <aside className="space-y-4 rounded-xl border border-[#213743] bg-[#1a2c38] p-4 lg:col-span-1">
-        <div>
-          <h3 className="text-md mb-2 font-extrabold text-white">Punter Lounge</h3>
-          <p className="text-xs text-[#8a96a3]">
-            Real-time synchronization engine connecting users globally over a single
-            WebSocket room.
-          </p>
+      <aside className="rounded-xl border border-[#213743] bg-[#1a2c38] p-3 sm:p-4 lg:col-span-1 lg:space-y-4">
+        {/* Compact header row on phones; the full stack returns at lg. */}
+        <div className="flex items-center justify-between gap-3 lg:block">
+          <div className="min-w-0">
+            <h3 className="text-md font-extrabold text-white lg:mb-2">Punter Lounge</h3>
+            <p className="hidden text-xs text-[#8a96a3] lg:block">
+              Real-time synchronization engine connecting users globally over a single
+              WebSocket room.
+            </p>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-2 rounded-lg border border-[#213743] bg-[#0f212e] px-3 py-2 lg:mt-4 lg:w-full lg:block lg:px-3 lg:py-3">
+            <div className="hidden text-[10px] font-bold uppercase tracking-wider text-[#8a96a3] lg:mb-1 lg:block">
+              Users Online
+            </div>
+            <div className="flex items-center gap-2">
+              <span
+                className={`h-2.5 w-2.5 shrink-0 rounded-full ${
+                  isOpen ? 'animate-pulse bg-[#00e701]' : 'bg-[#8a96a3]'
+                }`}
+              />
+              <span className="text-lg font-black text-white lg:text-2xl">{online}</span>
+              <span className="text-[10px] uppercase text-[#8a96a3] lg:hidden">online</span>
+            </div>
+          </div>
         </div>
 
-        <div className="rounded-lg border border-[#213743] bg-[#0f212e] p-3">
-          <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-[#8a96a3]">
-            Users Online
-          </div>
-          <div className="flex items-center gap-2">
-            <span
-              className={`h-2.5 w-2.5 rounded-full ${
-                isOpen ? 'animate-pulse bg-[#00e701]' : 'bg-[#8a96a3]'
-              }`}
-            />
-            <span className="text-2xl font-black text-white">{online}</span>
-          </div>
-        </div>
-
-        <p className="text-[11px] leading-relaxed text-[#8a96a3]">
+        <p className="mt-2 text-[11px] leading-relaxed text-[#8a96a3] lg:mt-0">
           {STATUS_COPY[status] ?? STATUS_COPY.disconnected}
         </p>
 
-        <p className="rounded-lg border border-amber-500/25 bg-amber-500/5 p-3 text-[11px] leading-relaxed text-amber-200/80">
+        <p className="mt-2 hidden rounded-lg border border-amber-500/25 bg-amber-500/5 p-3 text-[11px] leading-relaxed text-amber-200/80 lg:mt-0 lg:block">
           Messages here are posted by whoever is connected. Nothing said in the room is
           verified advice — treat slip codes as unvetted user content.
         </p>
       </aside>
 
-      <div className="flex h-[60vh] flex-col overflow-hidden rounded-xl border border-[#213743] bg-[#1a2c38] lg:col-span-3">
+      <div className="flex h-[65dvh] min-h-[380px] flex-col overflow-hidden rounded-xl border border-[#213743] bg-[#1a2c38] lg:col-span-3 lg:h-[60vh]">
         <div ref={scrollRef} className="nexus-scroll flex-1 space-y-4 overflow-y-auto p-4">
           {messages.length === 0 ? (
             <p className="pt-8 text-center text-sm text-[#8a96a3]">
@@ -117,7 +121,7 @@ export default function ChatPanel({ messages, online, status, notice, onSend, us
 
         <form
           onSubmit={handleSubmit}
-          className="flex items-center gap-3 border-t border-[#213743] bg-[#0f212e] p-4"
+          className="flex items-center gap-2 border-t border-[#213743] bg-[#0f212e] p-3 sm:gap-3 sm:p-4"
         >
           <input
             type="text"
@@ -127,15 +131,15 @@ export default function ChatPanel({ messages, online, status, notice, onSend, us
             placeholder={isOpen ? 'Message the lounge…' : 'Reconnecting…'}
             aria-label="Message the punter lounge"
             disabled={!isOpen}
-            className="flex-1 rounded-lg border border-[#213743] bg-[#1a2c38] px-4 py-2.5 text-sm text-white placeholder:text-[#8a96a3] focus:border-[#00e701]/50 focus:outline-none disabled:opacity-50"
+            className="min-h-[44px] w-full min-w-0 flex-1 rounded-lg border border-[#213743] bg-[#1a2c38] px-3 py-2.5 text-base text-white placeholder:text-[#8a96a3] focus:border-[#00e701]/50 focus:outline-none disabled:opacity-50 sm:px-4 sm:text-sm"
           />
           <button
             type="submit"
             disabled={!isOpen || !draft.trim()}
-            className="flex items-center gap-1.5 rounded-lg bg-[#00e701] px-4 py-2.5 text-sm font-black text-black transition hover:bg-[#00c900] disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-lg bg-[#00e701] px-3 py-2.5 text-sm font-black text-black transition hover:bg-[#00c900] disabled:cursor-not-allowed disabled:opacity-40 sm:px-4"
           >
             <Send className="h-4 w-4" />
-            <span>Send</span>
+            <span className="hidden sm:inline">Send</span>
           </button>
         </form>
       </div>

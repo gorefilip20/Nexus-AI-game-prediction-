@@ -77,7 +77,7 @@ export default function ModelBreakdown({ model, homeName, awayName }) {
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="mt-2 flex w-full items-center justify-between text-[10px] font-bold uppercase tracking-wider text-[#8a96a3] transition hover:text-white"
+        className="mt-2 flex min-h-[44px] w-full items-center justify-between py-2 text-[10px] font-bold uppercase tracking-wider text-[#8a96a3] transition hover:text-white"
         aria-expanded={expanded}
       >
         <span>{expanded ? 'Hide' : 'More'} markets</span>

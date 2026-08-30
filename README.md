@@ -290,6 +290,31 @@ npm run scenario -- "Chelsea vs Brighton"
 npm run check:secrets    # blocks a tracked or bundle-exposed credential
 ```
 
+## Settlement notifications
+
+When a recorded pick grades, a structured card goes out to any configured
+channel — Telegram (`TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID`) and/or a generic
+webhook (`NOTIFY_WEBHOOK_URL`) for Slack, Discord or a push relay.
+
+Delivery never blocks settlement: a channel outage leaves the pick queued for
+the next pass, and `notifiedAt` on the ledger entry makes re-sending impossible.
+`NOTIFY_STATUSES` defaults to `WIN`; add `LOSS` for a complete feed.
+
+Every card states the running settled record (`12W–8L (60%)`). A stream of wins
+with no denominator reads as an unbroken run whatever the real record is, and
+the tracker already refuses to overstate itself.
+
+## Zero-downtime analytics
+
+The last successfully built board is held in memory. When the daily budget is
+spent — or the feed is down — the dashboard serves that board rather than going
+blank, labelled with how old it is and when live updates resume at 00:00 UTC.
+
+Responses carry `stale`, `staleReason`, `ageSeconds` and `liveUpdatesResumeAt`,
+and the UI shows a banner with a live countdown. Nothing is presented as current
+when it is not. A buffer older than 24 hours is discarded: by then the analysis
+describes fixtures already played.
+
 ## Staying live around the clock
 
 Provider quota is the binding constraint on 24/7 updates, so requests are paced

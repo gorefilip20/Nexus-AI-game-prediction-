@@ -1,4 +1,5 @@
 import DataProvenanceNotice from './DataProvenanceNotice.jsx';
+import CachedDataBanner from './CachedDataBanner.jsx';
 import PredictionCard from './PredictionCard.jsx';
 
 export default function PredictionsPanel({ predictions, meta }) {
@@ -11,6 +12,14 @@ export default function PredictionsPanel({ predictions, meta }) {
           markets and analysed against a fitted model.
         </p>
       </div>
+
+      <CachedDataBanner
+        stale={meta.stale}
+        staleReason={meta.staleReason}
+        ageSeconds={meta.ageSeconds}
+        liveUpdatesResumeAt={meta.liveUpdatesResumeAt}
+        className="mb-4"
+      />
 
       <DataProvenanceNotice
         live={meta.live}

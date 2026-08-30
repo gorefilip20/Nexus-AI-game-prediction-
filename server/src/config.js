@@ -91,6 +91,22 @@ const config = {
   // refresh window. Disable it to run the board on odds alone.
   modelEnabled: boolFromEnv('MODEL_ENABLED', true),
 
+  notifications: {
+    // Which settlement outcomes fire a card. WIN-only matches the spec; add
+    // LOSS for a complete feed rather than a wins-only highlight reel.
+    statuses: (process.env.NOTIFY_STATUSES ?? 'WIN')
+      .split(',')
+      .map((s) => s.trim().toUpperCase())
+      .filter(Boolean),
+    telegram: {
+      botToken: (process.env.TELEGRAM_BOT_TOKEN ?? '').trim() || null,
+      chatId: (process.env.TELEGRAM_CHAT_ID ?? '').trim() || null,
+    },
+    webhook: {
+      url: (process.env.NOTIFY_WEBHOOK_URL ?? '').trim() || null,
+    },
+  },
+
   ledgerPath: (process.env.LEDGER_PATH ?? '').trim() || null,
   settlementIntervalMs: intFromEnv('SETTLEMENT_INTERVAL_MS', 15 * 60_000),
 };

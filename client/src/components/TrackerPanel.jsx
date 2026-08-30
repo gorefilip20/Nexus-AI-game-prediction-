@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CheckCircle, Clock, Flame, ShieldCheck, TrendingUp, XCircle } from 'lucide-react';
 import DataProvenanceNotice from './DataProvenanceNotice.jsx';
+import CachedDataBanner from './CachedDataBanner.jsx';
 
 /**
  * The analysis stored with the pick when it was made.
@@ -18,7 +19,7 @@ function StoredJustification({ text }) {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="mt-1 text-[10px] font-bold uppercase tracking-wider text-[#8a96a3] transition hover:text-white"
+        className="mt-1 inline-flex min-h-[44px] items-center py-2 text-[10px] font-bold uppercase tracking-wider text-[#8a96a3] transition hover:text-white"
       >
         {open ? 'Hide reasoning' : 'Why this pick'}
       </button>
@@ -73,6 +74,13 @@ export default function TrackerPanel({ tracker, meta }) {
 
   return (
     <div className="space-y-6">
+      <CachedDataBanner
+        stale={meta.stale}
+        staleReason={meta.staleReason}
+        ageSeconds={meta.ageSeconds}
+        liveUpdatesResumeAt={meta.liveUpdatesResumeAt}
+      />
+
       <DataProvenanceNotice
         live={meta.live}
         provider={meta.provider}

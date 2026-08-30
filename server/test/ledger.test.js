@@ -83,10 +83,12 @@ test('a correct pick settles as a WIN and moves the win rate', async () => {
   const ledger = await tempLedger();
   ledger.record([slip()]);
 
-  const settled = ledger.settle(new Map([['football:239625', finished(2, 1)]]));
+  const { settled, entries } = ledger.settle(new Map([['football:239625', finished(2, 1)]]));
   const summary = ledger.summary();
 
   assert.equal(settled, 1);
+  assert.equal(entries.length, 1, 'the graded entry is returned for notification');
+  assert.equal(entries[0].status, 'WIN');
   assert.equal(summary.wins, 1);
   assert.equal(summary.losses, 0);
   assert.equal(summary.winRate, 100);
@@ -126,7 +128,7 @@ test('an abandoned fixture voids rather than counting against the record', async
 test('unfinished fixtures stay pending', async () => {
   const ledger = await tempLedger();
   ledger.record([slip()]);
-  const settled = ledger.settle(
+  const { settled } = ledger.settle(
     new Map([['football:239625', { homeScore: 1, awayScore: 0, status: { finished: false } }]]),
   );
 

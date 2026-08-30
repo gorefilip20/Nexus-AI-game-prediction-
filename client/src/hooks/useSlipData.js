@@ -20,7 +20,16 @@ async function getJson(url, signal) {
 export function useSlipData() {
   const [predictions, setPredictions] = useState([]);
   const [tracker, setTracker] = useState(null);
-  const [meta, setMeta] = useState({ live: false, provider: null, fetchedAt: null, degraded: [] });
+  const [meta, setMeta] = useState({
+    live: false,
+    provider: null,
+    fetchedAt: null,
+    degraded: [],
+    stale: false,
+    staleReason: null,
+    ageSeconds: null,
+    liveUpdatesResumeAt: null,
+  });
   const [state, setState] = useState('loading');
   const [error, setError] = useState(null);
   const [reloadToken, setReloadToken] = useState(0);
@@ -47,6 +56,12 @@ export function useSlipData() {
           provider: board.provider,
           fetchedAt: board.fetchedAt,
           degraded: board.degraded ?? [],
+          // Set when the server fell back to its continuity buffer because the
+          // provider budget was spent or the feed was down.
+          stale: Boolean(board.stale),
+          staleReason: board.staleReason ?? null,
+          ageSeconds: board.ageSeconds ?? null,
+          liveUpdatesResumeAt: board.liveUpdatesResumeAt ?? null,
         });
         setState('ready');
         setError(null);

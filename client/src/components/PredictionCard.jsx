@@ -113,19 +113,21 @@ export default function PredictionCard({ slip }) {
 
       <InsightPanel insight={slip.insight} homeName={slip.home} awayName={slip.away} />
 
-      <div className="flex items-center justify-between rounded-lg bg-[#213743] p-3">
+      {/* Stacked on phones: side by side, the code truncates and the user
+          cannot read what they are copying. */}
+      <div className="flex flex-col gap-2 rounded-lg bg-[#213743] p-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
         <div className="min-w-0">
           <span className="block text-[10px] font-bold uppercase text-[#8a96a3]">
             NexusBet Slip Code
           </span>
-          <code className="block truncate font-mono text-sm font-bold text-[#00e701]">
+          <code className="block break-all font-mono text-sm font-bold text-[#00e701]">
             {reference}
           </code>
         </div>
         <button
           type="button"
           onClick={handleCopy}
-          className="ml-3 flex shrink-0 items-center space-x-1 rounded-md bg-[#00e701] p-2 text-xs font-black text-black transition hover:bg-[#00c900]"
+          className="flex min-h-[44px] w-full shrink-0 items-center justify-center space-x-1.5 rounded-md bg-[#00e701] px-3 py-2 text-xs font-black text-black transition hover:bg-[#00c900] sm:ml-3 sm:w-auto"
         >
           <Copy className="h-3.5 w-3.5" />
           <span>{copied ? 'Copied!' : 'Copy'}</span>
