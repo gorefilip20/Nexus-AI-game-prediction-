@@ -5,8 +5,11 @@ import NavBar from './components/NavBar.jsx';
 import PredictionsPanel from './components/PredictionsPanel.jsx';
 import TrackerPanel from './components/TrackerPanel.jsx';
 import ChatPanel from './components/ChatPanel.jsx';
+import SearchBar from './components/SearchBar.jsx';
+import SearchResults from './components/SearchResults.jsx';
 import { useLoungeSocket } from './hooks/useLoungeSocket.js';
 import { useSlipData } from './hooks/useSlipData.js';
+import { useFixtureSearch } from './hooks/useFixtureSearch.js';
 
 const LOCAL_USERNAME = 'Me (Manager)';
 
@@ -42,8 +45,25 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('predictions');
   const { predictions, tracker, meta, state, error, reload } = useSlipData();
   const { messages, online, status, notice, send } = useLoungeSocket();
+  const search = useFixtureSearch();
+
+  // A live search takes over the main area: it spans every sport, so scoping it
+  // to whichever tab happens to be open would hide most of its results.
+  const searchActive = search.query.trim().length >= 2;
 
   const renderPanel = () => {
+    if (searchActive) {
+      return (
+        <SearchResults
+          query={search.query}
+          state={search.state}
+          response={search.response}
+          error={search.error}
+          onClear={search.clear}
+        />
+      );
+    }
+
     if (activeTab === 'chat') {
       return (
         <ChatPanel
@@ -74,6 +94,17 @@ export default function App() {
         onTabChange={setActiveTab}
         status={status}
         online={online}
+      />
+
+      <SearchBar
+        query={search.query}
+        onQueryChange={search.setQuery}
+        sport={search.sport}
+        onSportChange={search.setSport}
+        days={search.days}
+        onDaysChange={search.setDays}
+        state={search.state}
+        onClear={search.clear}
       />
 
       <main className="mx-auto max-w-6xl p-6">{renderPanel()}</main>

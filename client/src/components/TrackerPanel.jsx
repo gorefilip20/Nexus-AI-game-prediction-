@@ -1,5 +1,35 @@
+import { useState } from 'react';
 import { CheckCircle, Clock, Flame, ShieldCheck, TrendingUp, XCircle } from 'lucide-react';
 import DataProvenanceNotice from './DataProvenanceNotice.jsx';
+
+/**
+ * The analysis stored with the pick when it was made.
+ *
+ * Shown against the settled result so a win or loss can be read back against
+ * the reasoning that produced it, rather than judged on the outcome alone.
+ */
+function StoredJustification({ text }) {
+  const [open, setOpen] = useState(false);
+  if (!text) return null;
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="mt-1 text-[10px] font-bold uppercase tracking-wider text-[#8a96a3] transition hover:text-white"
+      >
+        {open ? 'Hide reasoning' : 'Why this pick'}
+      </button>
+      {open ? (
+        <pre className="mt-2 max-w-md whitespace-pre-wrap rounded-md border border-[#213743] bg-[#0f212e] p-2.5 font-sans text-[10px] leading-relaxed text-[#b1b6c0]">
+          {text}
+        </pre>
+      ) : null}
+    </>
+  );
+}
 
 const SPORT_LABELS = { football: 'Football', basketball: 'Basketball', volleyball: 'Volleyball' };
 
@@ -131,6 +161,7 @@ export default function TrackerPanel({ tracker, meta }) {
                           {row.probability}% implied at time of pick
                         </span>
                       ) : null}
+                      <StoredJustification text={row.justification} />
                     </td>
                     <td className="p-4">
                       <span className="font-mono text-[#00e701]">{row.odd ?? '—'}</span>

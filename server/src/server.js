@@ -6,6 +6,7 @@ const { config } = require('./config');
 const { sampleTrackerSummary } = require('./data');
 const { createProvider } = require('./providers');
 const { buildBoard } = require('./board');
+const { searchFixtures } = require('./search');
 const { PredictionLedger, DEFAULT_PATH } = require('./ledger');
 const { PunterLounge } = require('./lounge');
 
@@ -79,6 +80,25 @@ fastify.get('/api/predictions', async (request, reply) => {
       message: err.message,
       provider: provider.name,
     });
+  }
+});
+
+fastify.get('/api/search', async (request, reply) => {
+  const { q, sport, days, limit } = request.query ?? {};
+
+  try {
+    return await searchFixtures({
+      provider,
+      query: q,
+      sport: sport || null,
+      days: days ?? 2,
+      limit: limit ?? 12,
+      logger: fastify.log,
+      modelEnabled: config.modelEnabled,
+    });
+  } catch (err) {
+    fastify.log.error({ err }, 'Search failed');
+    return reply.code(502).send({ error: 'search_failed', message: err.message });
   }
 });
 

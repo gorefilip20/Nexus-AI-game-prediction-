@@ -1,7 +1,7 @@
 'use strict';
 
 const { getJson, ProviderError } = require('../http');
-const { favourite } = require('../odds');
+const { favourite, devig } = require('../odds');
 
 /**
  * API-Sports ships one API per sport on its own host, sharing an auth scheme and
@@ -262,6 +262,7 @@ function createApiSportsProvider({
       odd: null,
       bookmaker: null,
       market: null,
+      marketOutcomes: [],
       overround: null,
       oddsAvailable: false,
       source: 'market-odds',
@@ -280,6 +281,15 @@ function createApiSportsProvider({
       const pick = favourite(moneyline.outcomes);
       if (!pick) return base;
 
+      // Keep the whole ladder, devigged: the insight generator needs every
+      // outcome's fair price to compute expected value, not just the favourite.
+      const fair = devig(moneyline.outcomes.map((o) => o.odd));
+      const marketOutcomes = moneyline.outcomes.map((o, i) => ({
+        label: o.label,
+        odd: o.odd,
+        impliedProbability: fair ? Math.round(fair[i] * 1000) / 10 : null,
+      }));
+
       return {
         ...base,
         prediction: describePick(fixture, pick),
@@ -288,6 +298,7 @@ function createApiSportsProvider({
         odd: pick.odd,
         bookmaker: moneyline.bookmaker,
         market: moneyline.market,
+        marketOutcomes,
         overround: pick.overround ? Math.round(pick.overround * 1000) / 1000 : null,
         oddsAvailable: true,
       };
@@ -304,7 +315,12 @@ function createApiSportsProvider({
     live: true,
     sports: SPORT_NAMES,
 
-    /** Every fixture on a given date, unfiltered — used by the scenario CLI. */
+    /** Adds devigged market odds to fixtures the caller located itself. */
+    async priceFixtures(fixtures) {
+      return Promise.all(fixtures.map(attachOdds));
+    },
+
+    /** Every fixture on a given date, unfiltered — used by search and the CLI. */
     async listFixturesByDate(sport, date) {
       if (!SPORTS[sport]) return [];
       const raw = await call(sport, SPORTS[sport].listPath, {

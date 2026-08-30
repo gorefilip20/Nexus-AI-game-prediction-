@@ -18,7 +18,7 @@ real-time punter lounge for football, basketball and volleyball.
 | Back-end | Fastify 5 with `@fastify/websocket` |
 | Data | [API-Sports](https://api-sports.io/) — football v3, basketball v1, volleyball v1 |
 | Models | Poisson / least-squares / logistic regression, hand-rolled (no deps) |
-| Tests | `node:test` — 93 cases |
+| Tests | `node:test` — 132 cases |
 
 ## Quick start
 
@@ -143,6 +143,60 @@ and a convincing imitation would simply fail when pasted in — or load somethin
 the user did not choose. This encodes the selection honestly instead, and the UI
 says plainly that it will not load a slip on Stake or anywhere else.
 
+## Match analysis
+
+Every fixture carries a generated `matchJustification` string plus a structured
+`insight` object, both produced by `server/src/insight.js` from data the app
+already holds. The UI renders it as an expandable **AI Insight & Analysis** panel
+under each card.
+
+It is a **rule-based generator, not a language model**. Every sentence is derived
+from the fitted model, that league's finished results and the live odds ladder,
+so a justification cannot assert something the numbers do not support. The panel
+says as much in its provenance line.
+
+Bullets cover:
+
+- **Model** — the fit, its training sample and its outcome probabilities.
+- **Team form** — each side's last 6 finished fixtures: record, form string,
+  current run, and scored/conceded per match, in that sport's own unit
+  (goals / points / sets).
+- **Head-to-head** — prior meetings from the fitted dataset, oriented to the
+  upcoming home side, with the most recent result.
+- **Expected value** — per outcome: `EV = p_model × decimalOdds − 1`, alongside
+  the gap against the devigged market price.
+
+Both are reported because they answer different questions: a large EV on a long
+price and a small disagreement with the market are not the same thing. A caveat
+always accompanies a value claim — a closing market is usually better calibrated
+than a single-season model, so a positive gap is a prompt to look closer, not a
+proven edge. Thin fits, missing markets and absent head-to-head history are each
+called out rather than quietly omitted.
+
+The justification is stored with the pick in the ledger, so a settled result can
+be read back against the reasoning that produced it.
+
+## Global search
+
+A search bar and sport filter sit above the tabs and span every sport, so a query
+is not scoped to whichever tab is open.
+
+```
+GET /api/search?q=Brighton&sport=football&days=2&limit=12
+```
+
+Matches on either team or the league, substring in both directions, so
+`Brighton` finds `Brighton & Hove Albion`. Results come back as full prediction
+cards — priced, modelled and analysed, identical in shape to the main board,
+because both go through the same `enrichSlips` path.
+
+Quota discipline matters here: each scanned day costs one schedule request per
+sport. So queries under two characters are rejected before any upstream call,
+input is debounced 350 ms, in-flight requests are aborted when the query moves
+on, `days` is capped at 7, and the day range is a visible control rather than a
+hidden default. An empty result reports how many fixtures were actually scanned,
+so "nothing found" stays distinguishable from "the feed was down".
+
 ## The tracker
 
 No sports API can report *your* win rate — it knows fixtures and results, not
@@ -162,7 +216,8 @@ before kickoff and graded afterwards, which is what `server/src/ledger.js` does:
 | Endpoint | Description |
 | --- | --- |
 | `GET /api/health` | Status, connected clients, provider, uptime |
-| `GET /api/predictions` | Board: fixtures, odds, model probabilities, slip codes |
+| `GET /api/predictions` | Board: fixtures, odds, model probabilities, analysis, slip codes |
+| `GET /api/search?q=&sport=&days=&limit=` | Team/league search across sports and dates |
 | `GET /api/tracker` | Win rate, streak and the settlement ledger |
 | `GET /api/meta` | Provider, quota remaining, model toggle |
 | `POST /api/settle` | Force a settlement pass |
@@ -188,16 +243,23 @@ client/src/
     NavBar.jsx                 Tabs + live connection node
     PredictionsPanel.jsx       Slip cards, market odds, slip codes
     ModelBreakdown.jsx         Model probabilities, expandable markets
+    InsightPanel.jsx           AI Insight & Analysis panel
+    PredictionCard.jsx         One fixture, shared by board and search
+    SearchBar.jsx              Global team/league search + sport filter
+    SearchResults.jsx          Search result grid
     TrackerPanel.jsx           Stat tiles + settlement audit
     ChatPanel.jsx              Punter lounge + composer
     DataProvenanceNotice.jsx   Says where the numbers came from
   hooks/
     useLoungeSocket.js         WS lifecycle, replay, reconnect
     useSlipData.js             REST loader + 5-minute refresh
+    useFixtureSearch.js        Debounced, abortable search
 
 server/src/
   server.js                    Routes, settlement loop, shutdown
-  board.js                     Provider + models -> the board
+  board.js                     Provider + models -> the board (shared enrichment)
+  insight.js                   Rule-based form, head-to-head and EV analysis
+  search.js                    Multi-sport, multi-day fixture search
   config.js                    Env config
   http.js                      Timeouts, retries, API-Sports error handling
   cache.js                     TTL cache, stale-on-error, request collapsing
@@ -222,7 +284,7 @@ server/src/
 ```bash
 npm run dev              # server + client
 npm run build            # production client bundle
-npm test                 # 93 tests
+npm test                 # 132 tests
 npm run verify:provider  # live smoke check against your key
 npm run scenario -- "Chelsea vs Brighton"
 ```

@@ -89,6 +89,9 @@ class PredictionLedger {
         probability: slip.probability,
         odd: slip.odd,
         bookmaker: slip.bookmaker,
+        // The reasoning shown at the time is kept with the pick, so a settled
+        // result can be read back against the analysis that justified it.
+        justification: slip.matchJustification ?? null,
         recordedAt: this.now().toISOString(),
         status: 'PENDING',
         settledAt: null,

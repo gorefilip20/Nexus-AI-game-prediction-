@@ -233,3 +233,24 @@ test('cache throws when the first ever call fails', async () => {
     }),
   );
 });
+
+test('a recorded pick keeps the justification shown at the time', async () => {
+  const ledger = await tempLedger();
+  ledger.record([slip({ matchJustification: 'Model: rates Arsenal 58.2%.' })]);
+
+  const [entry] = ledger.summary().rows;
+  assert.equal(entry.justification, 'Model: rates Arsenal 58.2%.');
+
+  ledger.settle(new Map([['football:239625', finished(2, 1)]]));
+  await ledger.save();
+
+  const reloaded = new PredictionLedger({ filePath: ledger.filePath, logger: silentLogger });
+  await reloaded.load();
+  assert.equal(reloaded.summary().rows[0].justification, 'Model: rates Arsenal 58.2%.');
+});
+
+test('a pick recorded without a justification stores null, not undefined', async () => {
+  const ledger = await tempLedger();
+  ledger.record([slip()]);
+  assert.equal(ledger.summary().rows[0].justification, null);
+});
