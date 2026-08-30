@@ -18,7 +18,7 @@ real-time punter lounge for football, basketball and volleyball.
 | Back-end | Fastify 5 with `@fastify/websocket` |
 | Data | [API-Sports](https://api-sports.io/) — football v3, basketball v1, volleyball v1 |
 | Models | Poisson / least-squares / logistic regression, hand-rolled (no deps) |
-| Tests | `node:test` — 132 cases |
+| Tests | `node:test` — 149 cases |
 
 ## Quick start
 
@@ -284,10 +284,26 @@ server/src/
 ```bash
 npm run dev              # server + client
 npm run build            # production client bundle
-npm test                 # 132 tests
+npm test                 # 149 tests
 npm run verify:provider  # live smoke check against your key
 npm run scenario -- "Chelsea vs Brighton"
+npm run check:secrets    # blocks a tracked or bundle-exposed credential
 ```
+
+## Production
+
+See **[DEPLOYMENT.md](DEPLOYMENT.md)** for platform-by-platform instructions,
+crash-recovery layers and the scaling constraints.
+
+The short version: the backend is a **long-lived stateful process** (WebSockets,
+in-memory cache, fitted models, settlement timer), so it needs a container or a
+VM — not a serverless platform. Netlify can host the client but not this API.
+`docker compose up -d --build` gives crash recovery and a persistent ledger
+volume; `ecosystem.config.cjs` is the PM2 equivalent for a plain VM.
+
+Configuration is validated at boot and the server **refuses to start** on a fatal
+misconfiguration — a wildcard CORS origin in production, a missing provider key,
+or a secret exposed to the browser through a `VITE_` prefix.
 
 ## Configuration
 

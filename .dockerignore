@@ -1,0 +1,17 @@
+node_modules
+**/node_modules
+client/dist
+server/data
+.git
+.github
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+.vite
+Dockerfile
+docker-compose.yml
+DEPLOYMENT.md
+README.md
+server/test

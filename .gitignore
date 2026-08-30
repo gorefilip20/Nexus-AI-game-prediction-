@@ -1,8 +1,13 @@
 node_modules/
 dist/
 build/
+
+# Secrets. Only .env.example is tracked — it must contain placeholders, never
+# real values. The negation keeps it from being swept up by the patterns above.
 .env
-.env.local
+.env.*
+!.env.example
+
 *.log
 npm-debug.log*
 .DS_Store
@@ -10,3 +15,7 @@ npm-debug.log*
 
 # Prediction ledger (runtime data, not source)
 server/data/
+
+# Local process-manager and container state
+.pm2/
+*.pid

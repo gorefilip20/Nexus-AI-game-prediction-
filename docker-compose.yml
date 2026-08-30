@@ -1,0 +1,42 @@
+services:
+  nexusbet:
+    build: .
+    image: nexusbet-ai:latest
+    restart: unless-stopped
+    ports:
+      - '${PORT:-5000}:5000'
+    environment:
+      NODE_ENV: production
+      SERVE_CLIENT: 'true'
+      LEDGER_PATH: /data/ledger.json
+      TRUST_PROXY: 'true'
+    # Secrets come from a gitignored .env, never from this file.
+    env_file:
+      - .env
+    volumes:
+      # The ledger must outlive the container; without this, every settled pick
+      # is lost on redeploy and the tracker silently resets.
+      - ledger-data:/data
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    # Bounded so a crash loop cannot starve the host.
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+volumes:
+  ledger-data:
