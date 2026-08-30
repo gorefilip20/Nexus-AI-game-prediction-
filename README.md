@@ -1,135 +1,255 @@
 # NexusBet AI
 
-Multi-sport analytics dashboard, streak tracker and real-time punter lounge, built
-from the *NexusBet AI — Codebase Blueprint*.
+Multi-sport analytics dashboard, probability engine, settlement tracker and
+real-time punter lounge for football, basketball and volleyball.
 
-> **Demo build.** Every fixture, probability, odds figure, booking code and
-> settlement row in this repository is sample data. Nothing here is model output
-> or a record of settled wagers, and the app does not connect to any sportsbook.
-> See [Sample data and honest framing](#sample-data-and-honest-framing) before
-> putting this in front of users.
+> **What the numbers are.** Fixtures and odds come from a live sports API. Model
+> probabilities are computed here, by fitting per-sport statistical models to
+> that league's real finished matches. Nothing on the board is hardcoded — but a
+> model probability is an estimate from a fitted model, not a forecast of the
+> result, and the tracker's win rate counts only picks this app recorded before
+> kickoff. With no API key configured the app runs on clearly-labelled sample data.
 
 ## Stack
 
 | Layer | Choice |
 | --- | --- |
 | Front-end | React 19 + Vite, Tailwind CSS v4, Lucide icons |
-| Back-end | Fastify 5 with `@fastify/websocket` (native WebSockets) |
-| Tests | `node:test` |
+| Back-end | Fastify 5 with `@fastify/websocket` |
+| Data | [API-Sports](https://api-sports.io/) — football v3, basketball v1, volleyball v1 |
+| Models | Poisson / least-squares / logistic regression, hand-rolled (no deps) |
+| Tests | `node:test` — 93 cases |
 
-The UI follows the blueprint's dark palette — `#0f212e` page, `#1a2c38` panels,
-`#213743` borders and a `#00e701` accent — with premium analytical cards, a live
-confidence bar, and flashing green status nodes for connection state.
-
-## Layout
-
-```
-.
-├── client/                     # Vite + React dashboard
-│   └── src/
-│       ├── App.jsx             # Tab shell, load/error states, footer
-│       ├── components/
-│       │   ├── NavBar.jsx           # Tabs + live connection node
-│       │   ├── PredictionsPanel.jsx # Slip cards, confidence bars, copy-to-clipboard
-│       │   ├── TrackerPanel.jsx     # Stat tiles + settlement audit table
-│       │   ├── ChatPanel.jsx        # Punter lounge room + composer
-│       │   └── SampleDataNotice.jsx # On-screen sample-data disclosure
-│       └── hooks/
-│           ├── useLoungeSocket.js   # WebSocket lifecycle, replay, reconnect
-│           └── useSlipData.js       # REST loader for slips + tracker
-└── server/                     # Fastify engine
-    ├── src/
-    │   ├── server.js           # HTTP routes, WS route, graceful shutdown
-    │   ├── lounge.js           # Room state: validation, rate limits, fan-out
-    │   └── data.js             # Sample fixtures + derived tracker summary
-    └── test/lounge.test.js
-```
-
-## Running it
+## Quick start
 
 ```bash
-npm install          # installs both workspaces
-npm run dev          # Fastify on :5000 and Vite on :5173 together
+npm install
+cp .env.example .env          # add your API_SPORTS_KEY
+npm run verify:provider       # confirm the feed and normalisers agree
+npm run dev                   # Fastify :5000 + Vite :5173
 ```
 
-Open http://localhost:5173. Vite proxies `/api` and `/ws` to the engine, so the
-browser only ever talks to one origin in development.
+Open http://localhost:5173. Without a key everything still runs, on sample data.
 
-Individually:
+## Why API-Sports
 
-```bash
-npm run dev:server   # Fastify only, with --watch
-npm run dev:client   # Vite only
-npm run build        # production client bundle into client/dist
-npm test             # server test suite
-```
+Volleyball is the constraint. Most affordable sports feeds cover football and
+basketball but not volleyball; API-Sports covers all three behind one key, with
+a consistent envelope and a free tier of **100 requests/day per sport** (resets
+00:00 UTC). Paid plans start around $19/month.
 
-### Configuration
+Everything vendor-specific lives in `server/src/providers/`. Swapping feeds means
+adding one factory that satisfies the same `getSlips` / `getHistory` /
+`getResults` contract — nothing outside that directory knows the vendor.
 
-| Variable | Default | Purpose |
+### Request budget
+
+A full board refresh costs, per sport: 1 fixture list + 1 odds call per fixture +
+1 league-history call per distinct league. With the default 3 fixtures per sport
+that is roughly 20 requests per cold refresh across all three sports. Caching
+keeps steady-state cost far lower:
+
+| Data | TTL | Why |
 | --- | --- | --- |
-| `PORT` | `5000` | Engine listen port |
-| `HOST` | `0.0.0.0` | Engine bind address |
-| `CORS_ORIGIN` | `http://localhost:5173` | Allowed browser origin |
-| `VITE_API_TARGET` | `http://localhost:5000` | Dev-server proxy target |
-| `VITE_WS_URL` | *(unset)* | Absolute WS URL, when not proxying |
+| Fixtures | 5 min | Kickoff times and line-ups move slowly |
+| Odds | 15 min | Prices drift, but not every minute |
+| Results | 10 min | Only matters around settlement |
+| League history | 6 h | Only changes when matches finish |
+
+Concurrent requests for the same key are collapsed into one upstream call, and a
+failed refresh serves the last good value rather than blanking the board.
+
+## The probability engine
+
+Each sport gets the model its scoring process actually justifies. Using Poisson
+for all three would be wrong: basketball scores are not rare events, and a
+volleyball match is a race to three sets, not a scoreline.
+
+| Sport | Model | Fitted on | Markets |
+| --- | --- | --- | --- |
+| Football | Poisson regression on goals + Dixon-Coles low-score correction | finished league fixtures | 1X2, O/U, Asian handicap, BTTS, correct score |
+| Basketball | Ridge least-squares on points, normal margin/total | finished league games | Moneyline, spread, totals |
+| Volleyball | Logistic regression on set outcomes, race-to-3 expansion | finished league games | Match winner, set handicap, total sets |
+
+### Football
+
+Fits, by penalised maximum likelihood over real results:
+
+```
+log λ_home = μ + attack[home] − defence[away] + homeAdvantage
+log λ_away = μ + attack[away] − defence[home]
+```
+
+Attack and defence are re-centred each step (only differences are identifiable),
+an L2 penalty shrinks thin-sample teams toward league average, and matches are
+exponentially recency-weighted (240-day half-life) so current form dominates.
+
+Every market is read off **one** joint score matrix, so 1X2, over/under and
+handicap numbers cannot contradict each other. The Dixon-Coles ρ is fitted by
+grid search; it corrects the four low scorelines independent Poisson misprices.
+
+### Basketball
+
+Points are sums of many possessions, so the margin is approximately normal.
+Team offence/defence ratings come from a ridge least-squares fit; the margin and
+total standard deviations are **measured from fit residuals**, not assumed.
+
+### Volleyball
+
+Set win probability comes from a logistic fit on historical set outcomes, where
+each match contributes its sets as weighted Bernoulli trials — so a 3–2 counts as
+much weaker evidence than a 3–0. Match markets then follow in closed form; the
+race-to-3 win probability `p³(1 + 3q + 6q²)` is asserted against the model output
+in the test suite.
+
+### When the model declines to answer
+
+It returns nothing — and the UI says so — when there are no finished fixtures to
+fit, or when a team never appears in training (a newly promoted side). A thin fit
+is served flagged `reliable: false` and rendered as "provisional" with its sample
+size. **No probability is ever invented to fill a gap.**
+
+## The scenario CLI
+
+Runs the engine against one named fixture, the "Chelsea vs Brighton today" check:
+
+```bash
+API_SPORTS_KEY=... npm run scenario -- "Chelsea vs Brighton"
+API_SPORTS_KEY=... node scripts/scenario.js "Lakers vs Celtics" --sport basketball
+API_SPORTS_KEY=... node scripts/scenario.js "Italy vs Brazil" --date 2026-09-01
+```
+
+It finds the real fixture in the schedule, fits that league's model on its real
+finished matches, and prints outcome, totals, handicap, BTTS and scoreline
+probabilities, plus a model-vs-market edge where odds exist.
+
+If the fixture is not on the schedule that day it says so, lists what actually
+is, and exits non-zero. It will not price a match that is not being played.
+
+## Slip codes
+
+```
+NB1-<SPORT>-<FIXTURE_ID>-<MARKET>-<SELECTION>[-<LINE>]-<CHECK>
+NB1-FB-239625-1X2-H-7B
+```
+
+Copyable, checksummed, and decodable back to the exact fixture and selection via
+`decodeSlip()`. A tampered or truncated code fails its checksum rather than
+resolving to the wrong match.
+
+**These are not Stake booking codes.** A real booking code is minted by that
+sportsbook from its own internal market ids; it cannot be computed from outside,
+and a convincing imitation would simply fail when pasted in — or load something
+the user did not choose. This encodes the selection honestly instead, and the UI
+says plainly that it will not load a slip on Stake or anywhere else.
+
+## The tracker
+
+No sports API can report *your* win rate — it knows fixtures and results, not
+which picks you made. So a truthful accuracy figure needs the picks written down
+before kickoff and graded afterwards, which is what `server/src/ledger.js` does:
+
+1. Every priced slip the board shows is recorded once, with its price and
+   probability at the time it was shown. Re-recording is refused, so a later,
+   better price can never overwrite the pick that was actually displayed.
+2. A settlement pass (every 15 minutes, or `POST /api/settle`) grades pending
+   picks against final scores.
+3. `winRate` is `null` until something settles — not `0`, and never a placeholder.
+   Abandoned fixtures grade `VOID` so they neither flatter nor penalise the record.
 
 ## API
 
 | Endpoint | Description |
 | --- | --- |
-| `GET /api/health` | Status, connected client count, uptime |
-| `GET /api/predictions` | Prediction slips (`sampleData: true`) |
-| `GET /api/tracker` | Win rate, streak and settlement audit rows |
+| `GET /api/health` | Status, connected clients, provider, uptime |
+| `GET /api/predictions` | Board: fixtures, odds, model probabilities, slip codes |
+| `GET /api/tracker` | Win rate, streak and the settlement ledger |
+| `GET /api/meta` | Provider, quota remaining, model toggle |
+| `POST /api/settle` | Force a settlement pass |
 | `WS /ws/punter-lounge` | Live chat room |
 
 ### WebSocket protocol
 
-Clients send `{ "user": string, "msg": string, "tag": string | null }`.
+Clients send `{ "user": string, "msg": string, "tag": string | null }`. The
+server replies with tagged frames: `history` (last 50 on connect), `message`,
+`presence`, and `error` (e.g. `rate_limited`).
 
-The server replies with tagged frames:
+The room validates and caps every field (32 / 500 / 24 chars), rate-limits to 8
+messages per 10s per socket, and runs a 30-second ping/pong sweep so the online
+count cannot drift upward from dead connections. State is in-memory: multiple
+instances would need a shared bus.
 
-| Frame | Payload | When |
+## Layout
+
+```
+client/src/
+  App.jsx                      Tab shell, load/error states, footer
+  components/
+    NavBar.jsx                 Tabs + live connection node
+    PredictionsPanel.jsx       Slip cards, market odds, slip codes
+    ModelBreakdown.jsx         Model probabilities, expandable markets
+    TrackerPanel.jsx           Stat tiles + settlement audit
+    ChatPanel.jsx              Punter lounge + composer
+    DataProvenanceNotice.jsx   Says where the numbers came from
+  hooks/
+    useLoungeSocket.js         WS lifecycle, replay, reconnect
+    useSlipData.js             REST loader + 5-minute refresh
+
+server/src/
+  server.js                    Routes, settlement loop, shutdown
+  board.js                     Provider + models -> the board
+  config.js                    Env config
+  http.js                      Timeouts, retries, API-Sports error handling
+  cache.js                     TTL cache, stale-on-error, request collapsing
+  odds.js                      Implied probability, overround, devig
+  slip.js                      Slip code encode/decode
+  ledger.js                    Pick recording and settlement
+  scenario.js                  Named-fixture analysis
+  lounge.js                    Chat room state
+  models/
+    poisson.js                 Score matrix and football markets
+    regression.js              Poisson regression + Dixon-Coles rho
+    normal.js                  Basketball ratings and normal markets
+    sets.js                    Volleyball set model
+    index.js                   Per-sport dispatch
+  providers/
+    apiSports.js               API-Sports client and normalisers
+    sample.js                  Offline fallback
+```
+
+## Commands
+
+```bash
+npm run dev              # server + client
+npm run build            # production client bundle
+npm test                 # 93 tests
+npm run verify:provider  # live smoke check against your key
+npm run scenario -- "Chelsea vs Brighton"
+```
+
+## Configuration
+
+See `.env.example` for the full list. The essentials:
+
+| Variable | Default | Purpose |
 | --- | --- | --- |
-| `history` | `{ messages: [...] }` | On connect, replaying the last 50 messages |
-| `message` | `{ message: {...} }` | A message was accepted and fanned out |
-| `presence` | `{ online: number }` | Someone joined or left |
-| `error` | `{ reason, message }` | Payload rejected, e.g. `rate_limited` |
+| `API_SPORTS_KEY` | *(unset)* | Provider key; unset falls back to sample data |
+| `API_SPORTS_MODE` | `direct` | `direct` or `rapidapi` |
+| `FIXTURES_PER_SPORT` | `3` | Board size per sport |
+| `MODEL_ENABLED` | `true` | Set `false` to run on odds alone |
+| `SETTLEMENT_INTERVAL_MS` | `900000` | Settlement pass cadence |
 
-The room hardens the blueprint's broadcast loop:
+## Odds handling
 
-- **Validation** — non-string fields are ignored, whitespace is collapsed, and
-  usernames, messages and tags are capped (32 / 500 / 24 characters). Empty and
-  malformed payloads are dropped without killing the socket.
-- **Rate limiting** — 8 messages per 10-second sliding window per socket; over
-  budget the sender gets an `error` frame instead of a broadcast.
-- **Presence** — a 30-second ping/pong sweep terminates sockets that stopped
-  answering, so the online count cannot drift upward from dead connections.
-- **Replay** — the last 50 messages are kept in memory so a joiner sees context.
+Bookmaker odds carry a margin: raw implied probabilities sum to more than 1.
+`server/src/odds.js` strips it before anything is displayed, so a shown market
+percentage is the market's actual view rather than the bookmaker's padded number.
+The overround is retained and reported alongside.
 
-State lives in memory, which is fine for one node. Multiple instances need a
-shared bus (Redis pub/sub or similar) plus a real message store.
+## Honest framing
 
-## Sample data and honest framing
-
-The blueprint labelled the dashboard's hardcoded numbers as an "AI Verified Win
-Rate" of 86.4% on a 9-win streak, alongside chat lines praising that streak. As
-written, that presents invented figures and invented testimonials as a real
-track record to people deciding whether to stake real money. This build keeps
-the layout and the component design intact, and changes how the numbers present
-themselves:
-
-- `buildAccuracyHistory()` **derives** the win rate, streak and total from the
-  audit rows instead of hardcoding them, so the headline can never contradict
-  the table beneath it.
-- A `SampleDataNotice` sits on the predictions and tracker tabs, and the footer
-  states plainly that the app places no bets and connects to no sportsbook.
-- Tiles read "Sample Win Rate" and "Rows In Sample"; slip codes read "Sample
-  Booking Slip".
-- The seeded chat lines no longer advertise a streak, and the lounge sidebar
-  notes that room messages are unvetted user content.
-- The footer carries a BeGambleAware link and an 18+ note.
-
-If you connect a real data source, replace `server/src/data.js`, keep the
-derivation rather than reintroducing fixed figures, and only drop the sample-data
-notice once the numbers are genuinely auditable.
+This is a dashboard over public fixture and odds data. It places no bets and is
+not affiliated with any sportsbook. Model output is an estimate from a fitted
+statistical model with a stated sample size — not a prediction of what will
+happen, and not advice. Betting risks real money and past results never predict
+future ones. Support: [BeGambleAware](https://www.begambleaware.org/). 18+.

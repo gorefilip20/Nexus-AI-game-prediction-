@@ -1,0 +1,32 @@
+{
+  "get": "games",
+  "parameters": { "date": "2026-09-01" },
+  "errors": [],
+  "results": 1,
+  "response": [
+    {
+      "id": 40122,
+      "date": "2026-09-01T18:00:00+00:00",
+      "time": "18:00",
+      "timestamp": 1788631200,
+      "timezone": "UTC",
+      "stage": "Pool A",
+      "week": null,
+      "status": { "long": "Not Started", "short": "NS", "timer": null },
+      "country": { "id": 20, "name": "Italy", "code": "IT", "flag": "x" },
+      "league": { "id": 4, "name": "FIVB Nations League", "type": "Cup", "season": "2026", "logo": "x" },
+      "teams": {
+        "home": { "id": 610, "name": "Italy", "logo": "x" },
+        "away": { "id": 613, "name": "Brazil", "logo": "x" }
+      },
+      "scores": { "home": null, "away": null },
+      "periods": {
+        "first": { "home": null, "away": null },
+        "second": { "home": null, "away": null },
+        "third": { "home": null, "away": null },
+        "fourth": { "home": null, "away": null },
+        "fifth": { "home": null, "away": null }
+      }
+    }
+  ]
+}

@@ -7,3 +7,6 @@ build/
 npm-debug.log*
 .DS_Store
 .vite/
+
+# Prediction ledger (runtime data, not source)
+server/data/

@@ -1,0 +1,7 @@
+{
+  "get": "fixtures",
+  "parameters": {},
+  "errors": { "requests": "You have reached the request limit for the day" },
+  "results": 0,
+  "response": []
+}

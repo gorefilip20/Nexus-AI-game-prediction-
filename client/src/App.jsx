@@ -19,12 +19,12 @@ function LoadingState() {
   );
 }
 
-function ErrorState({ onRetry }) {
+function ErrorState({ onRetry, message }) {
   return (
     <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-6">
       <h2 className="mb-1 font-extrabold text-white">Engine unreachable</h2>
       <p className="mb-4 text-sm text-red-200/80">
-        Could not load slips from the Fastify engine. Start it with{' '}
+        {message ?? 'Could not load slips from the Fastify engine.'} Start it with{' '}
         <code className="font-mono text-red-200">npm run dev:server</code> and retry.
       </p>
       <button
@@ -40,7 +40,7 @@ function ErrorState({ onRetry }) {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('predictions');
-  const { predictions, tracker, state, reload } = useSlipData();
+  const { predictions, tracker, meta, state, error, reload } = useSlipData();
   const { messages, online, status, notice, send } = useLoungeSocket();
 
   const renderPanel = () => {
@@ -58,12 +58,12 @@ export default function App() {
     }
 
     if (state === 'loading') return <LoadingState />;
-    if (state === 'error' || !tracker) return <ErrorState onRetry={reload} />;
+    if (state === 'error' || !tracker) return <ErrorState onRetry={reload} message={error} />;
 
     return activeTab === 'tracker' ? (
-      <TrackerPanel tracker={tracker} />
+      <TrackerPanel tracker={tracker} meta={meta} />
     ) : (
-      <PredictionsPanel predictions={predictions} />
+      <PredictionsPanel predictions={predictions} meta={meta} />
     );
   };
 
@@ -79,10 +79,11 @@ export default function App() {
       <main className="mx-auto max-w-6xl p-6">{renderPanel()}</main>
 
       <footer className="mx-auto max-w-6xl px-6 pb-10 text-xs leading-relaxed text-[#8a96a3]">
-        NexusBet AI is a demonstration build. It does not place bets, does not connect to
-        any sportsbook, and its figures are sample data rather than verified results.
-        Betting risks real money and past outcomes never predict future ones. If gambling
-        stops being fun, support is available at{' '}
+        NexusBet AI reads public fixture and odds data. It does not place bets and is not
+        affiliated with any sportsbook. Displayed probabilities are bookmaker prices with the
+        margin removed, not forecasts, and the win rate counts only picks this app recorded
+        before kickoff. Betting risks real money and past outcomes never predict future ones.
+        If gambling stops being fun, support is available at{' '}
         <a
           href="https://www.begambleaware.org/"
           target="_blank"

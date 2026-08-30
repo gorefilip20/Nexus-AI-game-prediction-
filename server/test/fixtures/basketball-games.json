@@ -1,0 +1,35 @@
+{
+  "get": "games",
+  "parameters": { "date": "2026-09-01" },
+  "errors": [],
+  "results": 1,
+  "response": [
+    {
+      "id": 358901,
+      "date": "2026-09-01T23:00:00+00:00",
+      "time": "23:00",
+      "timestamp": 1788649200,
+      "timezone": "UTC",
+      "stage": "Regular Season",
+      "week": null,
+      "status": { "long": "Not Started", "short": "NS", "timer": null },
+      "league": {
+        "id": 12,
+        "name": "NBA",
+        "type": "League",
+        "season": "2026-2027",
+        "logo": "x",
+        "country": { "id": 5, "name": "USA", "code": "US", "flag": "x" }
+      },
+      "country": { "id": 5, "name": "USA", "code": "US", "flag": "x" },
+      "teams": {
+        "home": { "id": 145, "name": "LA Lakers", "logo": "x" },
+        "away": { "id": 133, "name": "Boston Celtics", "logo": "x" }
+      },
+      "scores": {
+        "home": { "quarter_1": null, "quarter_2": null, "quarter_3": null, "quarter_4": null, "over_time": null, "total": null },
+        "away": { "quarter_1": null, "quarter_2": null, "quarter_3": null, "quarter_4": null, "over_time": null, "total": null }
+      }
+    }
+  ]
+}

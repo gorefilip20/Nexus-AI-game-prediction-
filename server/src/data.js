@@ -108,3 +108,39 @@ module.exports = {
   pastResults,
   buildAccuracyHistory,
 };
+
+/**
+ * Presents the sample tracker in the same shape the live ledger returns, so the
+ * client renders one contract regardless of which provider is configured.
+ */
+function sampleTrackerSummary() {
+  const derived = buildAccuracyHistory();
+  const wins = pastResults.filter((r) => r.status === 'WIN').length;
+
+  return {
+    live: false,
+    sampleData: true,
+    winRate: Number.parseFloat(derived.overallWinRate),
+    currentStreak: Number.parseInt(derived.currentStreak, 10) || 0,
+    settledCount: pastResults.length,
+    pendingCount: 0,
+    voidCount: 0,
+    wins,
+    losses: pastResults.length - wins,
+    rows: pastResults.map((row) => ({
+      key: `sample:${row.id}`,
+      sport: row.sport.toLowerCase(),
+      league: row.league,
+      match: row.match,
+      prediction: row.pick,
+      odd: Number.parseFloat(row.odds),
+      probability: null,
+      bookmaker: null,
+      status: row.status,
+      kickoff: null,
+      settledAt: null,
+    })),
+  };
+}
+
+module.exports.sampleTrackerSummary = sampleTrackerSummary;
