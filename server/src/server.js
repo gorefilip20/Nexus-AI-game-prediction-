@@ -162,6 +162,10 @@ async function buildServer({ logger = buildLoggerOptions() } = {}) {
     live: provider.live,
     sports: provider.sports,
     quota: provider.getQuota(),
+    // Per-sport budget state: limit, remaining, pacing line and any active
+    // rate-limit pause. This is the signal to watch for 24/7 continuity.
+    quotaDetail: provider.getQuotaDetail?.() ?? null,
+    egress: config.egress.proxyUrl ? 'static proxy' : 'direct',
     modelEnabled: config.modelEnabled,
     settlementIntervalMs: config.settlementIntervalMs,
   }));

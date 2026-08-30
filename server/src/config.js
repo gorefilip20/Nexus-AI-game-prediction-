@@ -64,6 +64,22 @@ const config = {
     bookmaker: (process.env.API_SPORTS_BOOKMAKER ?? '').trim() || null,
   },
 
+  egress: {
+    // ONE stable outbound proxy, not a rotating pool. API-Sports' abuse
+    // protection weighs the source IP alongside the key, and its own guidance
+    // for production is a dedicated static IP — a changing egress IP lowers
+    // effective capacity rather than raising it. See PROXY_AND_QUOTA.md.
+    proxyUrl: (process.env.EGRESS_PROXY_URL ?? '').trim() || null,
+    keepAliveMs: intFromEnv('EGRESS_KEEPALIVE_MS', 30_000),
+  },
+
+  quota: {
+    // Requests per sport per UTC day. Free tier is 100; raise it to match a
+    // paid plan so pacing uses the real ceiling.
+    dailyLimit: intFromEnv('QUOTA_DAILY_LIMIT', 100),
+    enabled: boolFromEnv('QUOTA_ENABLED', true),
+  },
+
   cache: {
     fixturesTtlMs: intFromEnv('CACHE_FIXTURES_TTL_MS', 5 * 60_000),
     oddsTtlMs: intFromEnv('CACHE_ODDS_TTL_MS', 15 * 60_000),
@@ -118,6 +134,13 @@ function validateConfig(cfg = config) {
       warnings.push(
         'LEDGER_PATH is unset, so settled picks are written to container-local disk ' +
           'and will be lost on restart. Point it at a mounted volume.',
+      );
+    }
+
+    if (cfg.egress?.proxyUrl) {
+      warnings.push(
+        'EGRESS_PROXY_URL is set. Confirm it is a dedicated static egress IP: ' +
+          'a shared or rotating IP reduces effective provider capacity.',
       );
     }
 

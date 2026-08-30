@@ -2,6 +2,8 @@
 
 const { config } = require('../config');
 const { TtlCache } = require('../cache');
+const { QuotaManager } = require('../quota');
+const { createEgress } = require('../egress');
 const { createApiSportsProvider } = require('./apiSports');
 const { createSampleProvider } = require('./sample');
 
@@ -10,7 +12,7 @@ const { createSampleProvider } = require('./sample');
  * here that satisfies the same getSlips/getResults contract — nothing outside
  * this directory knows which vendor is in use.
  */
-function createProvider({ logger = console, fetchImpl = globalThis.fetch, cache } = {}) {
+function createProvider({ logger = console, fetchImpl = globalThis.fetch, cache, quotaManager } = {}) {
   const sharedCache = cache ?? new TtlCache();
 
   if (config.provider === 'api-sports') {
@@ -21,8 +23,18 @@ function createProvider({ logger = console, fetchImpl = globalThis.fetch, cache 
       return createSampleProvider();
     }
 
+    const quota =
+      quotaManager ??
+      (config.quota.enabled
+        ? new QuotaManager({ dailyLimit: config.quota.dailyLimit, logger })
+        : null);
+
+    const egress = createEgress({ proxyUrl: config.egress.proxyUrl, logger, keepAliveMs: config.egress.keepAliveMs });
+
     return createApiSportsProvider({
       key: config.apiSports.key,
+      quotaManager: quota,
+      dispatcher: egress.dispatcher,
       mode: config.apiSports.mode,
       timeoutMs: config.apiSports.timeoutMs,
       fixturesPerSport: config.apiSports.fixturesPerSport,

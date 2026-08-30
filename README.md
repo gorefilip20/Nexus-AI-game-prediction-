@@ -18,7 +18,7 @@ real-time punter lounge for football, basketball and volleyball.
 | Back-end | Fastify 5 with `@fastify/websocket` |
 | Data | [API-Sports](https://api-sports.io/) — football v3, basketball v1, volleyball v1 |
 | Models | Poisson / least-squares / logistic regression, hand-rolled (no deps) |
-| Tests | `node:test` — 149 cases |
+| Tests | `node:test` — 192 cases |
 
 ## Quick start
 
@@ -284,11 +284,22 @@ server/src/
 ```bash
 npm run dev              # server + client
 npm run build            # production client bundle
-npm test                 # 149 tests
+npm test                 # 192 tests
 npm run verify:provider  # live smoke check against your key
 npm run scenario -- "Chelsea vs Brighton"
 npm run check:secrets    # blocks a tracked or bundle-exposed credential
 ```
+
+## Staying live around the clock
+
+Provider quota is the binding constraint on 24/7 updates, so requests are paced
+across the UTC day and reserved by priority — settlement and in-play fixtures
+are never starved by user searches. Polling cadence adapts from 1 minute for a
+live match to 6 hours for one days away. Outbound traffic goes through a single
+stable egress path, which is what the provider recommends.
+
+See **[PROXY_AND_QUOTA.md](PROXY_AND_QUOTA.md)**, including why a rotating proxy
+pool cannot raise a key-bound quota.
 
 ## Production
 

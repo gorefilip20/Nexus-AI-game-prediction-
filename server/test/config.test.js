@@ -128,7 +128,9 @@ test('a secret exposed through a VITE_ prefix is fatal', () => {
 });
 
 test('a VITE_ secret is caught outside production too', () => {
-  process.env.VITE_DATABASE_URL = 'postgres://u:p@h/db';
+  // Deliberately matches the placeholder shape the secret scanner ignores, so
+  // this fixture cannot be mistaken for a real credential.
+  process.env.VITE_DATABASE_URL = 'postgres://user:password@db.example.com:5432/example';
   const result = validateConfig(productionConfig({ isProduction: false }));
 
   assert.equal(result.ok, false, 'a bundle leak is not environment-specific');

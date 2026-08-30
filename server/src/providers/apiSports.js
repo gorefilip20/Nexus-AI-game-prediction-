@@ -183,6 +183,11 @@ function createApiSportsProvider({
   fetchImpl = globalThis.fetch,
   logger = console,
   now = () => new Date(),
+  // Optional QuotaManager. Without one the provider still works; it just has no
+  // opinion about pacing, which is the behaviour the tests exercise.
+  quotaManager = null,
+  // undici dispatcher for outbound egress (a single static proxy, or direct).
+  dispatcher = undefined,
 } = {}) {
   if (!key) throw new ProviderError('API_SPORTS_KEY is required for the api-sports provider');
 
@@ -211,14 +216,35 @@ function createApiSportsProvider({
     return { url: url.toString(), headers };
   }
 
-  async function call(sport, path, params) {
+  /**
+   * One upstream request.
+   *
+   * `priority` decides whether it is worth spending from today's allowance —
+   * see quota.js. A refused low-priority call is not an error: the caller gets
+   * an empty result and the cached value stands.
+   */
+  async function call(sport, path, params, { priority = 'normal' } = {}) {
+    if (quotaManager) {
+      const verdict = quotaManager.canSpend(sport, priority);
+      if (!verdict.allowed) {
+        throw new ProviderError(
+          `Skipped ${sport} request: ${verdict.reason} (${verdict.remaining} left today)`,
+          { status: null, retryable: false, quotaDeferred: true },
+        );
+      }
+    }
+
     const { url, headers } = buildRequest(sport, path, params);
     const { body, headers: responseHeaders } = await getJson(url, {
       headers,
       timeoutMs,
       fetchImpl,
       logger,
+      dispatcher,
+      onRateLimited: (retryAfter) => quotaManager?.observeRateLimited(sport, retryAfter),
     });
+
+    if (quotaManager) quotaManager.observeHeaders(sport, responseHeaders);
 
     const remaining = responseHeaders?.get?.('x-ratelimit-requests-remaining');
     if (remaining !== null && remaining !== undefined) {
@@ -272,7 +298,7 @@ function createApiSportsProvider({
       const raw = await cache.getOrSet(
         `odds:${fixture.sport}:${fixture.id}`,
         cacheTtl.oddsTtlMs ?? 15 * 60_000,
-        () => call(fixture.sport, '/odds', { [spec.oddsParam]: fixture.id, bookmaker }),
+        () => call(fixture.sport, '/odds', { [spec.oddsParam]: fixture.id, bookmaker }, { priority: 'normal' }),
       );
 
       const moneyline = extractMoneyline(raw.value?.[0]);
@@ -340,7 +366,8 @@ function createApiSportsProvider({
 
       const key = `history:${sport}:${leagueId}:${season}`;
       const cached = await cache.getOrSet(key, cacheTtl.historyTtlMs ?? 6 * 3600_000, () =>
-        call(sport, SPORTS[sport].listPath, { league: leagueId, season }),
+        // League history is the most expensive call and changes slowest.
+        call(sport, SPORTS[sport].listPath, { league: leagueId, season }, { priority: 'low' }),
       );
 
       return cached.value.map(NORMALISERS[sport]).filter((f) => f.status.finished);
@@ -399,7 +426,8 @@ function createApiSportsProvider({
             const raw = await cache.getOrSet(
               `result:${sport}:${id}`,
               cacheTtl.resultsTtlMs ?? 10 * 60_000,
-              () => call(sport, SPORTS[sport].listPath, { id }),
+              // Settlement: a finished fixture must be graded today.
+              () => call(sport, SPORTS[sport].listPath, { id }, { priority: 'critical' }),
             );
             const fixture = raw.value.map(NORMALISERS[sport])[0];
             if (fixture?.status?.finished) results.set(`${sport}:${id}`, fixture);
@@ -413,6 +441,7 @@ function createApiSportsProvider({
     },
 
     getQuota: () => ({ ...quota }),
+    getQuotaDetail: () => quotaManager?.snapshotAll() ?? null,
   };
 }
 

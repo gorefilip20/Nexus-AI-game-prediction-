@@ -128,7 +128,7 @@ operation is fitting a league model, which is a few hundred milliseconds.
 
 ```bash
 npm ci
-npm test                 # 149 tests
+npm test                 # 192 tests
 npm run check:secrets    # blocks on a tracked or bundle-exposed credential
 npm run build            # client bundle into client/dist
 npm run verify:provider  # confirms the live feed with your key
