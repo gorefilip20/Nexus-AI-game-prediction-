@@ -2,6 +2,7 @@
 
 const { getJson, ProviderError } = require('../http');
 const { favourite, devig } = require('../odds');
+const { createCoverage, coverageDates } = require('../coverage');
 
 /**
  * API-Sports ships one API per sport on its own host, sharing an auth scheme and
@@ -188,6 +189,8 @@ function createApiSportsProvider({
   quotaManager = null,
   // undici dispatcher for outbound egress (a single static proxy, or direct).
   dispatcher = undefined,
+  // Which competitions to cover. Defaults keep women's leagues in and youth out.
+  coverage = createCoverage({ maxFixturesPerSport: fixturesPerSport }),
 } = {}) {
   if (!key) throw new ProviderError('API_SPORTS_KEY is required for the api-sports provider');
 
@@ -254,30 +257,123 @@ function createApiSportsProvider({
       }
     }
 
-    return Array.isArray(body?.response) ? body.response : [];
+    const rows = Array.isArray(body?.response) ? body.response : [];
+    rows.paging = body?.paging ?? { current: 1, total: 1 };
+    return rows;
   }
 
-  /** Upcoming fixtures for one sport, newest kickoff first. */
+  /**
+   * Walks every page of a paginated endpoint.
+   *
+   * Full coverage means whole-day fixture and odds listings, which the provider
+   * pages at 100 items. `maxPages` bounds the walk so one enormous Saturday
+   * cannot drain the daily allowance in a single call.
+   */
+  async function callPaged(sport, path, params, { priority = 'normal', maxPages = 10 } = {}) {
+    const all = [];
+    let page = 1;
+    let totalPages = 1;
+
+    while (page <= Math.min(totalPages, maxPages)) {
+      let rows;
+      try {
+        rows = await call(sport, path, { ...params, page }, { priority });
+      } catch (err) {
+        // Page one failing is a real error; a later page failing still leaves
+        // usable data, so keep what we have.
+        if (page === 1) throw err;
+        logger?.warn?.(`${sport} ${path} page ${page} failed: ${err.message}`);
+        break;
+      }
+
+      all.push(...rows);
+      totalPages = Number(rows.paging?.total) || 1;
+
+      if (totalPages > maxPages && page === 1) {
+        logger?.warn?.(
+          `${sport} ${path} has ${totalPages} pages; fetching the first ${maxPages}. ` +
+            'Raise COVERAGE_MAX_PAGES or narrow the league set for complete coverage.',
+        );
+      }
+
+      page += 1;
+    }
+
+    return all;
+  }
+
+  /**
+   * Every fixture for a sport across the coverage window.
+   *
+   * Date-based for all three sports rather than football's `next=N`: `next`
+   * returns whichever fixtures happen to be chronologically closest worldwide,
+   * which silently excludes most leagues — including nearly every women's
+   * competition. A whole-day listing covers what a book covers.
+   */
   async function fetchUpcoming(sport) {
     const spec = SPORTS[sport];
-    const params = spec.supportsNext
-      ? { next: fixturesPerSport, timezone: 'UTC' }
-      : { date: utcDateString(now()), timezone: 'UTC' };
+    const dates = coverageDates(now(), coverage.days);
 
-    const raw = await call(sport, spec.listPath, params);
-    const normalised = raw.map(NORMALISERS[sport]).filter((f) => f.id && f.home && f.away);
+    const collected = [];
+    for (const date of dates) {
+      const raw = await callPaged(
+        sport,
+        spec.listPath,
+        { date, timezone: 'UTC' },
+        { priority: 'normal', maxPages: coverage.maxPages },
+      );
+      collected.push(...raw.map(NORMALISERS[sport]));
+    }
 
-    // The date-based endpoints return the whole day including finished games.
-    const upcoming = normalised.filter((f) => !f.status.finished);
-    const ordered = (upcoming.length ? upcoming : normalised).sort(
-      (a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0),
+    const seen = new Set();
+    const fixtures = collected
+      .filter((f) => f.id && f.home && f.away)
+      .filter((f) => {
+        const key = `${f.sport}:${f.id}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .filter((f) => !f.status.finished)
+      .filter((f) => coverage.includeLeague(f))
+      .sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
+
+    if (fixtures.length > coverage.maxFixturesPerSport) {
+      logger?.warn?.(
+        `${sport}: ${fixtures.length} fixtures in the window, capping at ${coverage.maxFixturesPerSport}.`,
+      );
+    }
+
+    return fixtures.slice(0, coverage.maxFixturesPerSport);
+  }
+
+  /**
+   * Odds for a whole date in one paginated sweep, keyed by fixture id.
+   *
+   * This is what makes full coverage affordable: pricing 900 fixtures one call
+   * at a time costs 900 requests, while the same board as a date sweep costs
+   * about ten.
+   */
+  async function fetchOddsByDate(sport, date) {
+    const rows = await callPaged(
+      sport,
+      '/odds',
+      { date, bookmaker },
+      { priority: 'normal', maxPages: coverage.maxPages },
     );
 
-    return ordered.slice(0, fixturesPerSport);
+    const byFixture = new Map();
+    for (const row of rows) {
+      // Football nests the id under `fixture`, the v1 sports under `game`.
+      const id = row?.fixture?.id ?? row?.game?.id ?? row?.id ?? null;
+      if (id !== null) byFixture.set(String(id), row);
+    }
+
+    return byFixture;
   }
 
   /** Attaches devigged market probabilities; returns the slip either way. */
-  async function attachOdds(fixture) {
+  async function attachOdds(fixture, oddsIndex = null) {
     const spec = SPORTS[fixture.sport];
     const base = {
       ...fixture,
@@ -295,13 +391,26 @@ function createApiSportsProvider({
     };
 
     try {
-      const raw = await cache.getOrSet(
-        `odds:${fixture.sport}:${fixture.id}`,
-        cacheTtl.oddsTtlMs ?? 15 * 60_000,
-        () => call(fixture.sport, '/odds', { [spec.oddsParam]: fixture.id, bookmaker }, { priority: 'normal' }),
-      );
+      // Prefer the day's bulk sweep; fall back to a single lookup only when a
+      // fixture was not in it (a late addition, or a paging cut-off).
+      let entry = oddsIndex?.get(String(fixture.id)) ?? null;
 
-      const moneyline = extractMoneyline(raw.value?.[0]);
+      if (!entry) {
+        const raw = await cache.getOrSet(
+          `odds:${fixture.sport}:${fixture.id}`,
+          cacheTtl.oddsTtlMs ?? 15 * 60_000,
+          () =>
+            call(
+              fixture.sport,
+              '/odds',
+              { [spec.oddsParam]: fixture.id, bookmaker },
+              { priority: 'low' },
+            ),
+        );
+        entry = raw.value?.[0] ?? null;
+      }
+
+      const moneyline = extractMoneyline(entry);
       if (!moneyline) return base;
 
       const pick = favourite(moneyline.outcomes);
@@ -396,7 +505,26 @@ function createApiSportsProvider({
           continue;
         }
         if (outcome.value.stale) degraded.push({ sport: SPORT_NAMES[i], error: 'serving cached data' });
-        slips.push(...(await Promise.all(outcome.value.fixtures.map(attachOdds))));
+
+        const sport = SPORT_NAMES[i];
+        const fixtures = outcome.value.fixtures;
+
+        // One sweep prices the whole day; without it a 900-fixture board would
+        // cost 900 requests.
+        let oddsIndex = null;
+        try {
+          const swept = await cache.getOrSet(
+            `oddsday:${sport}:${coverageDates(now(), 1)[0]}`,
+            cacheTtl.oddsTtlMs ?? 15 * 60_000,
+            () => fetchOddsByDate(sport, coverageDates(now(), 1)[0]),
+          );
+          oddsIndex = swept.value;
+        } catch (err) {
+          logger?.warn?.(`Bulk odds sweep failed for ${sport}: ${err.message}`);
+          degraded.push({ sport, error: `odds sweep unavailable (${err.message})` });
+        }
+
+        slips.push(...(await Promise.all(fixtures.map((f) => attachOdds(f, oddsIndex)))));
       }
 
       return {
@@ -405,6 +533,7 @@ function createApiSportsProvider({
         fetchedAt: now().toISOString(),
         quota,
         degraded,
+        coverage: coverage.snapshot(),
         slips,
       };
     },

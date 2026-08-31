@@ -16,7 +16,8 @@
     "test": "npm run test --workspace server",
     "verify:provider": "node scripts/verify-provider.js",
     "scenario": "node scripts/scenario.js",
-    "check:secrets": "node scripts/check-secrets.js"
+    "check:secrets": "node scripts/check-secrets.js",
+    "backtest": "node scripts/backtest.js"
   },
   "devDependencies": {
     "concurrently": "^10.0.5"

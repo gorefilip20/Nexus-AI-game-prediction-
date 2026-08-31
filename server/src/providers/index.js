@@ -4,6 +4,7 @@ const { config } = require('../config');
 const { TtlCache } = require('../cache');
 const { QuotaManager } = require('../quota');
 const { createEgress } = require('../egress');
+const { createCoverage } = require('../coverage');
 const { createApiSportsProvider } = require('./apiSports');
 const { createSampleProvider } = require('./sample');
 
@@ -35,6 +36,7 @@ function createProvider({ logger = console, fetchImpl = globalThis.fetch, cache,
       key: config.apiSports.key,
       quotaManager: quota,
       dispatcher: egress.dispatcher,
+      coverage: createCoverage({ ...config.coverage, logger }),
       mode: config.apiSports.mode,
       timeoutMs: config.apiSports.timeoutMs,
       fixturesPerSport: config.apiSports.fixturesPerSport,

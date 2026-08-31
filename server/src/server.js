@@ -139,6 +139,7 @@ async function buildServer({ logger = buildLoggerOptions() } = {}) {
         provider,
         logger: app.log,
         modelEnabled: config.modelEnabled,
+        minConfidence: config.minConfidence,
       });
 
       // A board with no slips is a degraded result, not a good one: keeping it
@@ -227,6 +228,13 @@ async function buildServer({ logger = buildLoggerOptions() } = {}) {
     quotaDetail: provider.getQuotaDetail?.() ?? null,
     egress: config.egress.proxyUrl ? 'static proxy' : 'direct',
     snapshot: snapshot.describe(),
+    coverage: {
+      days: config.coverage.days,
+      includeWomens: config.coverage.includeWomens,
+      includeYouth: config.coverage.includeYouth,
+      maxFixturesPerSport: config.coverage.maxFixturesPerSport,
+    },
+    minConfidence: config.minConfidence,
     notifications: {
       enabled: notifier.enabled,
       channels: notifier.channelNames,
@@ -247,6 +255,9 @@ async function buildServer({ logger = buildLoggerOptions() } = {}) {
         degraded: board.degraded,
         modelEnabled: board.modelEnabled,
         modelNotes: board.modelNotes ?? [],
+        minConfidence: board.minConfidence ?? 0,
+        highConfidenceCount: board.highConfidenceCount ?? 0,
+        coverage: board.coverage ?? null,
         quota: board.quota,
         // Set when this response came from the continuity buffer rather than a
         // fresh fetch, with how old it is and when live updates resume.

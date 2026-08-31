@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Copy } from 'lucide-react';
+import { Copy, Target } from 'lucide-react';
 import ModelBreakdown from './ModelBreakdown.jsx';
 import InsightPanel from './InsightPanel.jsx';
 
@@ -81,6 +81,15 @@ export default function PredictionCard({ slip }) {
       <div className="mb-1 text-xs font-bold uppercase tracking-wider text-[#8a96a3]">
         {SPORT_LABELS[slip.sport] ?? slip.sport} • {slip.league ?? 'Unknown league'}
       </div>
+
+      {/* Backtests show the strike rate climbs steeply with this threshold —
+          and the number of qualifying picks falls just as steeply. */}
+      {slip.highConfidence ? (
+        <div className="mb-2 inline-flex items-center gap-1.5 rounded-md border border-[#00e701]/25 bg-[#00e701]/10 px-2 py-1 text-[10px] font-black uppercase tracking-wider text-[#00e701]">
+          <Target className="h-3 w-3" />
+          High confidence · {slip.confidence}%
+        </div>
+      ) : null}
       <h3 className="mb-1 pr-24 text-lg font-bold text-white">
         {slip.home} vs {slip.away}
       </h3>

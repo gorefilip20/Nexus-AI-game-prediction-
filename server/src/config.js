@@ -64,6 +64,28 @@ const config = {
     bookmaker: (process.env.API_SPORTS_BOOKMAKER ?? '').trim() || null,
   },
 
+  coverage: {
+    // Days ahead to sweep. 1 = today's card, like a book's default view.
+    days: intFromEnv('COVERAGE_DAYS', 1),
+    // Pages per listing. The provider pages at 100, so 10 covers ~1000 fixtures.
+    maxPages: intFromEnv('COVERAGE_MAX_PAGES', 10),
+    maxFixturesPerSport: intFromEnv('COVERAGE_MAX_FIXTURES', 200),
+    // Women's competitions are covered by default. Turning this off is an
+    // explicit choice, not something that happens by accident.
+    includeWomens: boolFromEnv('COVERAGE_INCLUDE_WOMENS', true),
+    includeYouth: boolFromEnv('COVERAGE_INCLUDE_YOUTH', false),
+    includeFriendlies: boolFromEnv('COVERAGE_INCLUDE_FRIENDLIES', true),
+    leagueAllowList: (process.env.COVERAGE_LEAGUES ?? '')
+      .split(',').map((v) => v.trim()).filter(Boolean),
+    leagueBlockList: (process.env.COVERAGE_EXCLUDE_LEAGUES ?? '')
+      .split(',').map((v) => v.trim()).filter(Boolean),
+  },
+
+  // Only surface picks the model rates at least this likely. Raising it lifts
+  // the strike rate and shrinks the board; it does not make picks profitable,
+  // because short-priced favourites need a high strike rate just to break even.
+  minConfidence: Number.parseFloat(process.env.MIN_CONFIDENCE ?? '0') || 0,
+
   egress: {
     // ONE stable outbound proxy, not a rotating pool. API-Sports' abuse
     // protection weighs the source IP alongside the key, and its own guidance

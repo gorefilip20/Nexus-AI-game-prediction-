@@ -3,6 +3,8 @@ import CachedDataBanner from './CachedDataBanner.jsx';
 import PredictionCard from './PredictionCard.jsx';
 
 export default function PredictionsPanel({ predictions, meta }) {
+  const highConfidence = predictions.filter((slip) => slip.highConfidence).length;
+
   return (
     <div>
       <div className="mb-6">
@@ -28,6 +30,16 @@ export default function PredictionsPanel({ predictions, meta }) {
         degraded={meta.degraded}
         className="mb-4"
       />
+
+      {highConfidence > 0 ? (
+        <p className="mb-4 text-xs text-[#b1b6c0]">
+          <span className="font-bold text-[#00e701]">{highConfidence}</span> of{' '}
+          {predictions.length} fixtures clear the confidence threshold. A higher
+          threshold raises the strike rate and shrinks the board — it does not make a
+          pick profitable, since short-priced favourites need a high strike rate just
+          to break even.
+        </p>
+      ) : null}
 
       <p className="mb-6 text-[11px] leading-relaxed text-[#8a96a3]">
         Slip codes are NexusBet references that decode back to the exact fixture and

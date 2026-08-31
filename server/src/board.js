@@ -15,7 +15,23 @@ const { buildInsight } = require('./insight');
  * Shared by the main board and the search endpoint so both return identical
  * slip shapes.
  */
-async function enrichSlips({ provider, slips, logger = console, modelEnabled = true } = {}) {
+/**
+ * Top model probability for a slip, as a percentage, or null.
+ * This is the number the confidence filter acts on.
+ */
+function modelConfidence(markets) {
+  if (!markets?.outcome) return null;
+  const { home = 0, draw = 0, away = 0 } = markets.outcome;
+  return Math.max(home, draw, away);
+}
+
+async function enrichSlips({
+  provider,
+  slips,
+  logger = console,
+  modelEnabled = true,
+  minConfidence = 0,
+} = {}) {
   const canModel =
     modelEnabled && provider.live && typeof provider.getHistory === 'function';
 
@@ -31,8 +47,12 @@ async function enrichSlips({ provider, slips, logger = console, modelEnabled = t
           insight,
           matchJustification: insight.matchJustification,
           slipCode: encodeSlip(slip),
+          confidence: null,
+          highConfidence: false,
         };
       }),
+      minConfidence,
+      highConfidenceCount: 0,
     };
   }
 
@@ -93,29 +113,46 @@ async function enrichSlips({ provider, slips, logger = console, modelEnabled = t
       sport: slip.sport,
     });
 
+    const confidence = modelConfidence(markets);
+
     return {
       ...slip,
       model: markets,
       insight,
       matchJustification: insight.matchJustification,
       slipCode: encodeSlip(slip, markets),
+      confidence,
+      // Every fixture stays on the board — full coverage is the point — but the
+      // subset the model is confident about is flagged so the UI can lead with
+      // it. Backtests show the strike rate rises sharply with this threshold,
+      // and the number of qualifying picks falls just as sharply.
+      highConfidence: confidence !== null && minConfidence > 0 && confidence >= minConfidence,
     };
   });
 
-  return { modelEnabled: true, modelNotes, slips: enriched };
+  const featured = enriched.filter((s) => s.highConfidence).length;
+
+  return {
+    modelEnabled: true,
+    modelNotes,
+    minConfidence,
+    highConfidenceCount: featured,
+    slips: enriched,
+  };
 }
 
 /** The default board: today's fixtures for every sport, priced and analysed. */
-async function buildBoard({ provider, logger = console, modelEnabled = true } = {}) {
+async function buildBoard({ provider, logger = console, modelEnabled = true, minConfidence = 0 } = {}) {
   const board = await provider.getSlips();
   const enriched = await enrichSlips({
     provider,
     slips: board.slips,
     logger,
     modelEnabled,
+    minConfidence,
   });
 
   return { ...board, ...enriched };
 }
 
-module.exports = { buildBoard, enrichSlips };
+module.exports = { buildBoard, enrichSlips, modelConfidence };
