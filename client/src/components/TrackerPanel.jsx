@@ -62,6 +62,116 @@ function StoredJustification({ text }) {
   );
 }
 
+/**
+ * Staked return, shown with its margin of error.
+ *
+ * A bare ROI on a short book of picks reads as an edge when it is noise. The
+ * range and the verdict are what stop that misreading, so they are not optional
+ * detail — they are the point of the panel.
+ */
+function PerformancePanel({ performance }) {
+  if (!performance || performance.staked === 0) {
+    return (
+      <div className="mt-6 border border-nx-div px-4 py-4">
+        <div className="mb-1 text-[10px] font-extrabold uppercase tracking-[.05em] text-nx-faint">
+          Staked return
+        </div>
+        <p className="text-[12px] leading-relaxed text-nx-muted">
+          Nothing has settled yet, so there is no profit or loss to report. This figure stays
+          blank rather than showing a zero that could be mistaken for a result.
+        </p>
+      </div>
+    );
+  }
+
+  const profitable = performance.roi > 0;
+
+  return (
+    <div className="mt-6 border border-nx-div px-4 py-4">
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+        <span className="text-[10px] font-extrabold uppercase tracking-[.05em] text-nx-faint">
+          Staked return · 1 unit per pick
+        </span>
+        <span className="nx-num text-[11px] text-nx-faint">
+          {performance.staked} settled · avg price {performance.averageOdds}
+        </span>
+      </div>
+
+      <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
+        <div>
+          <div
+            className={`nx-num text-[28px] font-extrabold leading-none ${
+              profitable ? 'text-nx-accent' : 'text-nx-text'
+            }`}
+          >
+            {performance.roi > 0 ? '+' : ''}
+            {performance.roi}%
+          </div>
+          <div className="mt-1 text-[11px] text-nx-faint">Return on stake</div>
+        </div>
+        <div>
+          <div className="nx-num text-[20px] font-bold leading-none">
+            {performance.profitUnits > 0 ? '+' : ''}
+            {performance.profitUnits}
+          </div>
+          <div className="mt-1 text-[11px] text-nx-faint">Units</div>
+        </div>
+        {performance.roiRange ? (
+          <div>
+            <div className="nx-num text-[14px] font-semibold leading-none text-nx-muted">
+              {performance.roiRange.low}% to {performance.roiRange.high}%
+            </div>
+            <div className="mt-1 text-[11px] text-nx-faint">Likely range</div>
+          </div>
+        ) : null}
+      </div>
+
+      <p className="mt-3 border-t border-nx-div pt-3 text-[11px] leading-relaxed text-nx-accent-hi">
+        {performance.verdict}.
+      </p>
+
+      {performance.breakEvenStrikeRate ? (
+        <p className="mt-2 text-[11px] leading-relaxed text-nx-muted">
+          At an average price of {performance.averageOdds}, these picks needed a{' '}
+          <span className="nx-num font-bold">{performance.breakEvenStrikeRate}%</span> strike
+          rate just to break even. They struck{' '}
+          <span className="nx-num font-bold">{performance.strikeRate}%</span>.
+        </p>
+      ) : null}
+
+      {performance.byConfidence?.length > 1 ? (
+        <div className="nx-scroll mt-3 overflow-x-auto">
+          <table className="nx-num w-full min-w-[340px] border-collapse text-left text-[11px]">
+            <thead>
+              <tr className="border-b border-nx-div text-[10px] uppercase tracking-[.05em] text-nx-faint">
+                <th scope="col" className="py-1.5 pr-3 font-bold">Confidence</th>
+                <th scope="col" className="py-1.5 pr-3 font-bold">Picks</th>
+                <th scope="col" className="py-1.5 pr-3 font-bold">Strike</th>
+                <th scope="col" className="py-1.5 pr-3 font-bold">Units</th>
+                <th scope="col" className="py-1.5 font-bold">ROI</th>
+              </tr>
+            </thead>
+            <tbody>
+              {performance.byConfidence.map((band) => (
+                <tr key={band.band} className="border-b border-nx-div/60 text-nx-muted">
+                  <td className="py-1.5 pr-3 font-semibold text-nx-text">{band.band}</td>
+                  <td className="py-1.5 pr-3">{band.picks}</td>
+                  <td className="py-1.5 pr-3">{band.strikeRate}%</td>
+                  <td className="py-1.5 pr-3">{band.profitUnits}</td>
+                  <td className={`py-1.5 font-bold ${band.roi > 0 ? 'text-nx-accent' : 'text-nx-faint'}`}>
+                    {band.roi > 0 ? '+' : ''}
+                    {band.roi}%
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function TrackerPanel({ tracker, meta }) {
   const hasSettled = tracker.settledCount > 0;
 
@@ -103,6 +213,8 @@ export default function TrackerPanel({ tracker, meta }) {
           hint={tracker.voidCount > 0 ? `${tracker.voidCount} void` : 'Graded when each fixture ends'}
         />
       </div>
+
+      <PerformancePanel performance={tracker.performance} />
 
       {tracker.rows.length === 0 ? (
         <div className="mt-6 border border-nx-div px-4 py-5">

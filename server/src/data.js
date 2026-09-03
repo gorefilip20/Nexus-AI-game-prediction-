@@ -117,9 +117,14 @@ function sampleTrackerSummary() {
   const derived = buildAccuracyHistory();
   const wins = pastResults.filter((r) => r.status === 'WIN').length;
 
+  const { computePerformance } = require('./performance');
+
   return {
     live: false,
     sampleData: true,
+    performance: computePerformance(
+      pastResults.map((r) => ({ status: r.status, odd: Number.parseFloat(r.odds), probability: null })),
+    ),
     winRate: Number.parseFloat(derived.overallWinRate),
     currentStreak: Number.parseInt(derived.currentStreak, 10) || 0,
     settledCount: pastResults.length,

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import Banner from './Banner.jsx';
+import { localTimeZoneLabel, localTimeZoneName } from '../lib/time.js';
 import LeagueGroup from './LeagueGroup.jsx';
 
 const SPORT_FILTERS = [
@@ -70,6 +71,9 @@ export default function PredictionsPanel({ predictions, meta, state, error, onRe
   const groups = useMemo(() => groupByLeague(filtered), [filtered]);
   const highConfidence = filtered.filter((s) => s.highConfidence).length;
 
+  const zoneLabel = localTimeZoneLabel();
+  const zoneName = localTimeZoneName();
+
   const header = (
     <div className="mb-5">
       <h1 className="text-[26px] font-extrabold leading-tight sm:text-[30px]">The board</h1>
@@ -78,6 +82,11 @@ export default function PredictionsPanel({ predictions, meta, state, error, onRe
         markets and analysed against a fitted model. Grouped by competition — the tie that
         matters is bigger than the one that doesn&apos;t.
       </p>
+      {zoneLabel ? (
+        <p className="mt-2 text-[11px] uppercase tracking-[.05em] text-nx-faint" title={zoneName ?? undefined}>
+          All kick-off times in your local time ({zoneLabel})
+        </p>
+      ) : null}
     </div>
   );
 

@@ -333,6 +333,38 @@ hit rate because those favourites usually win — and they price near 1.20, wher
 roughly 83% is break-even. `MIN_CONFIDENCE` flags the confident subset on the
 board; it does not make those picks profitable.
 
+## Is it profitable?
+
+The tracker reports **staked return**, not just strike rate, because the two
+answer different questions. Backing heavy favourites hits often and still loses
+money; the price is short. Backing outsiders misses often and can still win.
+
+`server/src/performance.js` computes ROI from the ledger's own settled rows — at
+the real prices the picks were shown at — and reports it with a margin of error:
+
+```
++4.2%  Return on stake      -8.1% to +16.5%   Likely range
+       At an average price of 1.95, these picks needed a 51.3% strike rate
+       just to break even. They struck 53.0%.
+```
+
+The range is not decoration. Betting returns are noisy enough that a handful of
+winners at long prices makes a losing system look profitable, so a result is only
+called an edge when the whole interval clears zero — and under 100 settled picks
+it is called noise whatever the number says.
+
+ROI is measured on the ledger rather than a historical backtest for a reason: the
+provider returns scores, not the odds that were available before kick-off.
+Simulating profit against prices we never saw would produce an authoritative-
+looking number that means nothing.
+
+## Kick-off times
+
+Fixtures carry the provider's UTC-anchored kick-off timestamp, rendered in each
+reader's own timezone with the zone named on the board (`All kick-off times in
+your local time (WAT)`). A bare "15:00" on a fixture list is ambiguous, and an
+ambiguous kick-off time is a missed match.
+
 ## Settlement notifications
 
 When a recorded pick grades, a structured card goes out to any configured

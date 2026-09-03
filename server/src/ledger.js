@@ -4,6 +4,8 @@ const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
 
+const { computePerformance } = require('./performance');
+
 const DEFAULT_PATH = path.join(__dirname, '..', 'data', 'ledger.json');
 
 /** Actual outcome label for a finished fixture, or null when it is unscored. */
@@ -170,6 +172,9 @@ class PredictionLedger {
     return {
       live: true,
       sampleData: false,
+      // Staked return on the real recorded prices. Strike rate says how often
+      // we were right; this says whether being right was worth anything.
+      performance: computePerformance(all),
       settledCount: graded.length,
       pendingCount: all.filter((e) => e.status === 'PENDING').length,
       voidCount: all.filter((e) => e.status === 'VOID').length,
