@@ -29,14 +29,13 @@ export default defineConfig({
         /**
          * Split rarely-changing dependencies into their own chunks.
          *
-         * React and the icon set change only on upgrade, so isolating them means
+         * React changes only on upgrade, so isolating it means
          * a routine app deploy invalidates the small app chunk instead of forcing
          * every returning visitor to re-download the whole bundle.
          */
         manualChunks(id) {
           if (!id.includes('node_modules')) return undefined;
           if (/node_modules\/(react|react-dom|scheduler)\//.test(id)) return 'vendor-react';
-          if (id.includes('node_modules/lucide-react/')) return 'vendor-icons';
           return undefined;
         },
         // Content-hashed names so assets can be cached immutably.

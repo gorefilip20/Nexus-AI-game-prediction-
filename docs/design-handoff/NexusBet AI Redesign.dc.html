@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+  <link rel="stylesheet" href="_ds/modernist-40ac70d8-0d89-4811-b7e2-74ceb2bea2a2/styles.css">
+  <script src="_ds/modernist-40ac70d8-0d89-4811-b7e2-74ceb2bea2a2/_ds_bundle.js"></script>
+  <style>
+    @keyframes nx-pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+    .nx-root, .nx-root * { box-sizing: border-box; }
+    .nx-root { --nx-bg:#0b0d0b; --nx-surface:#141712; --nx-surface-2:#1d2118; --nx-text:#f2f5ef; --nx-muted:#a9b3a4; --nx-faint:#6c766a; --nx-div:#2b3227; --nx-accent:#22c55e; --nx-accent-hi:#4ade80; --nx-accent-lo:#16803c; }
+    .nx-root { background: var(--nx-bg); color: var(--nx-text); font-family: "Archivo", system-ui, sans-serif; }
+    .nx-root ::selection { background: rgba(236,48,19,.35); }
+    .nx-root a { color: var(--nx-accent-hi); }
+    .nx-root a:hover { color: var(--nx-accent); }
+    .nx-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
+    .nx-scroll::-webkit-scrollbar-thumb { background: var(--nx-div); }
+    .nx-num { font-variant-numeric: tabular-nums; }
+    .nx-tab-btn:focus-visible, .nx-btn:focus-visible, .nx-row:focus-visible, .nx-in:focus-visible { outline: 2px solid var(--nx-accent); outline-offset: 2px; }
+  </style>
+</helmet>
+
+<div class="nx-root" style="min-height:100vh;display:flex;flex-direction:column;">
+
+  <!-- ===== HEADER ===== -->
+  <header style="position:sticky;top:0;z-index:20;background:var(--nx-bg);border-bottom:2px solid var(--nx-div);">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 20px 12px;flex-wrap:wrap;">
+      <div style="display:flex;align-items:baseline;gap:8px;min-width:0;">
+        <span style="font-family:'Archivo',sans-serif;font-weight:800;font-size:22px;letter-spacing:-0.02em;white-space:nowrap;">NEXUSBET</span>
+        <span style="font-family:'Archivo',sans-serif;font-weight:800;font-size:22px;letter-spacing:-0.02em;color:var(--nx-accent);border-bottom:2px solid var(--nx-accent);line-height:1;">AI</span>
+        <span style="font-size:11px;color:var(--nx-faint);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;">research terminal, not a sportsbook</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <sc-if value="{{ connOpen }}">
+          <span style="width:7px;height:7px;background:var(--nx-accent);animation:nx-pulse 2s ease-in-out infinite;display:inline-block;"></span>
+        </sc-if>
+        <sc-if value="{{ connNotOpen }}">
+          <span style="width:7px;height:7px;background:var(--nx-faint);display:inline-block;"></span>
+        </sc-if>
+        <span class="nx-num" style="font-size:12px;font-weight:600;color:var(--nx-muted);">{{ connLabel }}</span>
+      </div>
+    </div>
+
+    <!-- search row -->
+    <div style="padding:0 20px 14px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+      <div style="position:relative;flex:1;min-width:220px;">
+        <input class="nx-in" type="search" value="{{ searchQuery }}" oninput="{{ onSearchInput }}" placeholder="Search any team or league — Arsenal, Lakers, Serie A…" aria-label="Search fixtures by team or league" style="width:100%;min-height:44px;background:var(--nx-surface);border:1px solid var(--nx-div);border-radius:0;color:var(--nx-text);padding:10px 12px;font-size:14px;font-family:inherit;"/>
+      </div>
+      <select value="{{ searchSport }}" onchange="{{ onSearchSportChange }}" aria-label="Filter by sport" style="min-height:44px;background:var(--nx-surface);border:1px solid var(--nx-div);color:var(--nx-text);padding:10px 12px;font-size:13px;font-weight:600;font-family:inherit;">
+        <option value="">All sports</option>
+        <option value="football">Football</option>
+        <option value="basketball">Basketball</option>
+        <option value="volleyball">Volleyball</option>
+      </select>
+      <select value="{{ searchDays }}" onchange="{{ onSearchDaysChange }}" aria-label="How many days ahead to search" style="min-height:44px;background:var(--nx-surface);border:1px solid var(--nx-div);color:var(--nx-text);padding:10px 12px;font-size:13px;font-weight:600;font-family:inherit;">
+        <option value="1">Today</option>
+        <option value="2">Next 2 days</option>
+        <option value="3">Next 3 days</option>
+        <option value="7">Next 7 days</option>
+      </select>
+    </div>
+
+    <!-- tabs -->
+    <sc-if value="{{ searchInactive }}">
+      <nav style="padding:0 20px;display:flex;gap:22px;">
+        <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3">
+          <button type="button" class="nx-tab-btn" onclick="{{ t.onClick }}" aria-current="{{ t.current }}" style="{{ t.style }}">{{ t.label }}</button>
+        </sc-for>
+      </nav>
+    </sc-if>
+  </header>
+
+  <!-- ===== PROTOTYPE CONTROLS (not part of the product) ===== -->
+  <div style="border-bottom:1px dashed var(--nx-div);background:var(--nx-surface);padding:8px 20px;display:flex;gap:16px;flex-wrap:wrap;align-items:center;">
+    <span style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--nx-faint);">Prototype — demo state</span>
+    <select value="{{ scenario }}" onchange="{{ onScenarioChange }}" style="background:var(--nx-bg);border:1px solid var(--nx-div);color:var(--nx-text);padding:6px 8px;font-size:12px;font-family:inherit;">
+      <option value="live">Live — healthy</option>
+      <option value="sample">Sample data (no API key)</option>
+      <option value="stale">Serving saved analysis (stale)</option>
+      <option value="loading">Loading</option>
+      <option value="error">Backend unreachable</option>
+      <option value="empty">Empty day (new deployment)</option>
+    </select>
+    <sc-if value="{{ isLoungeTab }}">
+      <span style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--nx-faint);">Lounge connection</span>
+      <select value="{{ chatConn }}" onchange="{{ onChatConnChange }}" style="background:var(--nx-bg);border:1px solid var(--nx-div);color:var(--nx-text);padding:6px 8px;font-size:12px;font-family:inherit;">
+        <option value="open">Connected</option>
+        <option value="connecting">Connecting</option>
+        <option value="disconnected">Disconnected</option>
+      </select>
+    </sc-if>
+  </div>
+
+  <!-- ===== MAIN ===== -->
+  <main style="flex:1;max-width:1180px;margin:0 auto;padding:20px;width:100%;">
+
+    <!-- ---------- SEARCH RESULTS ---------- -->
+    <sc-if value="{{ searchActive }}" hint-placeholder-val="{{ false }}">
+
+      <sc-if value="{{ searchStateSearching }}">
+        <div style="display:flex;align-items:center;gap:10px;border:1px solid var(--nx-div);padding:18px;">
+          <span style="width:6px;height:6px;background:var(--nx-accent);animation:nx-pulse 1s ease-in-out infinite;"></span>
+          <span style="font-size:13px;color:var(--nx-muted);">Searching schedules for "{{ searchQuery }}"…</span>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ searchStateError }}">
+        <div style="border:2px solid var(--nx-accent);padding:22px;">
+          <h2 style="margin:0 0 6px;font-size:20px;">Search failed</h2>
+          <p style="margin:0;font-size:13px;color:var(--nx-muted);">The search endpoint did not respond. Try again in a moment.</p>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ searchStateResults }}">
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:6px;">
+            <h1 style="margin:0;font-size:26px;">Results for "{{ searchQuery }}"</h1>
+            <button type="button" class="nx-btn" onclick="{{ onClearSearch }}" style="background:none;border:none;color:var(--nx-muted);font-family:inherit;font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.06em;cursor:pointer;padding:8px;">Back to today's board</button>
+          </div>
+          <p style="font-size:13px;color:var(--nx-muted);margin:0 0 16px;">{{ searchSummaryText }}</p>
+
+          <sc-if value="{{ searchHasResults }}">
+            <div style="display:flex;flex-direction:column;">
+              <sc-for list="{{ searchRows }}" as="f" hint-placeholder-count="4">
+                <dc-import name="FixtureRow" f="{{ f }}" hint-size="100%,auto"></dc-import>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ searchNoResults }}">
+            <div style="border:1px solid var(--nx-div);padding:22px;display:flex;gap:14px;">
+              <div>
+                <h2 style="margin:0 0 6px;font-size:17px;">No scheduled fixture matched</h2>
+                <p style="margin:0;font-size:13px;color:var(--nx-muted);max-width:520px;">Nothing matching "{{ searchQuery }}" is scheduled in the next {{ searchDays }} days. Try widening the date range, clearing the sport filter, or checking the spelling. The engine will not price a match that is not being played.</p>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+    </sc-if>
+
+    <!-- ---------- BOARD ---------- -->
+    <sc-if value="{{ showBoard }}">
+      <div style="margin-bottom:18px;">
+        <h1 style="margin:0 0 4px;font-size:26px;">The board</h1>
+        <p style="margin:0;font-size:13px;color:var(--nx-muted);max-width:640px;">Upcoming football, basketball and volleyball fixtures, priced from live bookmaker markets and analysed against a fitted model. Grouped by competition — the tie that matters is bigger than the one that doesn't.</p>
+      </div>
+
+      <sc-if value="{{ showStaleBanner }}">
+        <div role="status" style="border:1px solid var(--nx-div);border-left:3px solid var(--nx-accent-hi);padding:12px 14px;margin-bottom:12px;font-size:12px;color:var(--nx-muted);line-height:1.5;">
+          <strong style="color:var(--nx-text);">Showing saved analysis.</strong> The daily API budget for this feed is spent. Last refreshed 41 minutes ago. Live updates resume in about 3h 20m.
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showSampleBanner }}">
+        <div style="border:1px solid var(--nx-div);border-left:3px solid var(--nx-accent-hi);padding:12px 14px;margin-bottom:12px;font-size:12px;color:var(--nx-muted);line-height:1.5;">
+          <strong style="color:var(--nx-text);">Sample data.</strong> No sports API key is configured. These fixtures, odds and results are demo content — not live data and not a record of settled wagers.
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showLiveBanner }}">
+        <div style="border:1px solid var(--nx-div);padding:12px 14px;margin-bottom:12px;font-size:12px;color:var(--nx-muted);line-height:1.5;">
+          <strong style="color:var(--nx-text);">Live via API-Sports.</strong> Each percentage is the bookmaker's price with its margin removed — the market's view, not a proprietary forecast. Betting risks real money; no pick predicts a result.
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ boardHighConfLine }}">
+        <p style="font-size:12px;color:var(--nx-muted);margin:0 0 14px;">
+          <span style="color:var(--nx-text);font-weight:800;">{{ highConfCount }}</span> of {{ totalFixtureCount }} fixtures clear the confidence threshold. A higher threshold raises the strike rate and shrinks the board — it does not make a pick profitable.
+        </p>
+      </sc-if>
+
+      <sc-if value="{{ boardStateOk }}">
+        <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;">
+          <sc-for list="{{ sportChips }}" as="c" hint-placeholder-count="4">
+            <button type="button" onclick="{{ c.onClick }}" style="{{ c.style }}">{{ c.label }}</button>
+          </sc-for>
+        </div>
+
+        <sc-for list="{{ leagueGroups }}" as="g" hint-placeholder-count="4">
+          <section style="margin-bottom:4px;border-top:2px solid var(--nx-div);">
+            <button type="button" onclick="{{ g.onToggle }}" aria-expanded="{{ g.open }}" style="width:100%;background:none;border:none;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 4px;cursor:pointer;color:var(--nx-text);font-family:inherit;text-align:left;min-height:44px;">
+              <span style="display:flex;align-items:baseline;gap:10px;min-width:0;">
+                <span style="font-weight:800;font-size:15px;">{{ g.league }}</span>
+                <span style="font-size:11px;color:var(--nx-faint);text-transform:uppercase;letter-spacing:.05em;">{{ g.sportLabel }} · {{ g.countLabel }}</span>
+              </span>
+              <span style="font-size:12px;color:var(--nx-faint);">{{ g.toggleLabel }}</span>
+            </button>
+
+            <sc-if value="{{ g.open }}">
+              <div>
+                <sc-for list="{{ g.fixtures }}" as="f" hint-placeholder-count="3">
+                  <dc-import name="FixtureRow" f="{{ f }}" hint-size="100%,auto"></dc-import>
+                </sc-for>
+              </div>
+            </sc-if>
+          </section>
+        </sc-for>
+      </sc-if>
+
+      <sc-if value="{{ boardStateLoading }}">
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <sc-for list="{{ skeletonRows }}" as="sk" hint-placeholder-count="6">
+            <div style="border-top:1px solid var(--nx-div);padding:14px 4px;display:flex;gap:14px;align-items:center;">
+              <div style="height:12px;width:40px;background:var(--nx-surface-2);"></div>
+              <div style="height:12px;width:160px;background:var(--nx-surface-2);flex:1;max-width:220px;"></div>
+              <div style="height:12px;width:50px;background:var(--nx-surface-2);"></div>
+              <div style="height:12px;width:36px;background:var(--nx-surface-2);"></div>
+            </div>
+          </sc-for>
+          <p style="margin-top:14px;font-size:12px;color:var(--nx-faint);">Loading today's fixtures…</p>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ boardStateError }}">
+        <div style="border:2px solid var(--nx-accent);padding:24px;">
+          <h2 style="margin:0 0 6px;font-size:19px;">Engine unreachable</h2>
+          <p style="margin:0 0 16px;font-size:13px;color:var(--nx-muted);max-width:460px;">Could not load fixtures from the prediction engine. This is usually a backend restart or a network blip.</p>
+          <button type="button" onclick="{{ onRetry }}" class="nx-btn" style="background:var(--nx-accent);color:var(--nx-bg);border:none;font-family:inherit;font-weight:800;font-size:13px;padding:12px 18px;min-height:44px;cursor:pointer;">Retry</button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ boardStateEmpty }}">
+        <div style="border:1px solid var(--nx-div);padding:24px;max-width:520px;">
+          <h2 style="margin:0 0 6px;font-size:17px;">No fixtures today</h2>
+          <p style="margin:0;font-size:13px;color:var(--nx-muted);">Normal out of season, or when the daily provider quota is spent. Nothing is invented to fill the gap — the board comes back the moment fixtures are scheduled.</p>
+        </div>
+      </sc-if>
+
+      <p style="margin-top:22px;font-size:11px;line-height:1.6;color:var(--nx-faint);max-width:640px;">Slip codes decode back to the exact fixture and selection. They are NexusBet references, not sportsbook booking codes, and will not load a bet slip on Stake or elsewhere.</p>
+    </sc-if>
+
+    <!-- ---------- TRACKER ---------- -->
+    <sc-if value="{{ showTracker }}">
+      <div style="margin-bottom:18px;">
+        <h1 style="margin:0 0 4px;font-size:26px;">Tracker</h1>
+        <p style="margin:0;font-size:13px;color:var(--nx-muted);max-width:640px;">Every pick the board showed is written to a ledger before kickoff and graded against the final score once the fixture finishes.</p>
+      </div>
+
+      <sc-if value="{{ showStaleBanner }}">
+        <div role="status" style="border:1px solid var(--nx-div);border-left:3px solid var(--nx-accent-hi);padding:12px 14px;margin-bottom:16px;font-size:12px;color:var(--nx-muted);line-height:1.5;">
+          <strong style="color:var(--nx-text);">Showing saved analysis.</strong> Last refreshed 41 minutes ago. Live updates resume in about 3h 20m.
+        </div>
+      </sc-if>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));border-top:2px solid var(--nx-div);border-bottom:2px solid var(--nx-div);margin-bottom:16px;">
+        <div style="padding:18px 16px;border-right:1px solid var(--nx-div);">
+          <div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--nx-faint);margin-bottom:8px;">Settled win rate</div>
+          <div class="nx-num" style="font-size:34px;font-weight:800;">{{ winRateText }}</div>
+          <div style="font-size:11px;color:var(--nx-faint);margin-top:4px;">{{ winRateHint }}</div>
+        </div>
+        <div style="padding:18px 16px;border-right:1px solid var(--nx-div);">
+          <div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--nx-faint);margin-bottom:8px;">Current streak</div>
+          <div class="nx-num" style="font-size:34px;font-weight:800;">{{ streakText }}</div>
+          <div style="font-size:11px;color:var(--nx-faint);margin-top:4px;">Consecutive wins, most recent first</div>
+        </div>
+        <div style="padding:18px 16px;">
+          <div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--nx-faint);margin-bottom:8px;">Awaiting settlement</div>
+          <div class="nx-num" style="font-size:34px;font-weight:800;">{{ pendingText }}</div>
+          <div style="font-size:11px;color:var(--nx-faint);margin-top:4px;">{{ pendingHint }}</div>
+        </div>
+      </div>
+
+      <sc-if value="{{ trackerHasRows }}">
+        <div class="nx-scroll" style="overflow-x:auto;border:1px solid var(--nx-div);">
+          <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:640px;">
+            <thead>
+              <tr style="border-bottom:2px solid var(--nx-div);text-align:left;">
+                <th style="padding:10px 12px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--nx-faint);">Fixture / league</th>
+                <th style="padding:10px 12px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--nx-faint);">Recorded pick</th>
+                <th style="padding:10px 12px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--nx-faint);">Price</th>
+                <th style="padding:10px 12px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--nx-faint);">Settlement</th>
+              </tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{ trackerRows }}" as="r" hint-placeholder-count="6">
+                <tr style="border-bottom:1px solid var(--nx-div);vertical-align:top;">
+                  <td style="padding:12px;">
+                    <div style="font-weight:700;">{{ r.match }}</div>
+                    <div style="font-size:11px;color:var(--nx-faint);">{{ r.leagueLine }}</div>
+                  </td>
+                  <td style="padding:12px;">
+                    <div>{{ r.pickLabel }}</div>
+                    <button type="button" onclick="{{ r.onToggleWhy }}" style="background:none;border:none;color:var(--nx-faint);font-family:inherit;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.05em;padding:6px 0;cursor:pointer;min-height:32px;">{{ r.whyLabel }}</button>
+                    <sc-if value="{{ r.whyOpen }}">
+                      <div style="max-width:340px;border:1px solid var(--nx-div);padding:8px 10px;font-size:11px;color:var(--nx-muted);line-height:1.5;white-space:pre-wrap;">{{ r.justification }}</div>
+                    </sc-if>
+                  </td>
+                  <td class="nx-num" style="padding:12px;">{{ r.oddLabel }}</td>
+                  <td style="padding:12px;">
+                    <span style="{{ r.statusStyle }}">{{ r.statusLabel }}</span>
+                  </td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ trackerEmpty }}">
+        <div style="border:1px solid var(--nx-div);padding:24px;max-width:560px;">
+          <h2 style="margin:0 0 6px;font-size:17px;">No picks recorded yet</h2>
+          <p style="margin:0;font-size:13px;color:var(--nx-muted);">This is the honest default for a new deployment. Open the board — each priced fixture is written here automatically, and a win rate appears the first time one settles.</p>
+        </div>
+      </sc-if>
+    </sc-if>
+
+    <!-- ---------- LOUNGE ---------- -->
+    <sc-if value="{{ showLounge }}">
+      <div style="display:grid;grid-template-columns:1fr;gap:0;">
+        <div style="border-top:2px solid var(--nx-div);border-bottom:2px solid var(--nx-div);padding:16px 4px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:flex-end;">
+          <div>
+            <h1 style="margin:0 0 4px;font-size:22px;">Punter lounge</h1>
+            <p style="margin:0;font-size:12px;color:var(--nx-muted);max-width:420px;">{{ chatStatusCopy }}</p>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:11px;color:var(--nx-faint);text-transform:uppercase;letter-spacing:.05em;">Online</div>
+            <div class="nx-num" style="font-size:26px;font-weight:800;">{{ chatOnlineText }}</div>
+          </div>
+        </div>
+
+        <p style="font-size:11px;color:var(--nx-faint);line-height:1.6;padding:10px 4px 0;max-width:520px;">Messages here are posted by whoever is connected. Nothing said in the room is verified advice — treat slip codes as unvetted user content.</p>
+
+        <div class="nx-scroll" style="min-height:340px;max-height:52dvh;overflow-y:auto;padding:10px 4px;display:flex;flex-direction:column;gap:0;">
+          <sc-if value="{{ chatEmpty }}">
+            <p style="text-align:center;color:var(--nx-faint);font-size:13px;padding:40px 0;">No messages yet. Say hello to the lounge.</p>
+          </sc-if>
+          <sc-for list="{{ chatMessages }}" as="m" hint-placeholder-count="4">
+            <div style="border-top:1px solid var(--nx-div);padding:10px 0;">
+              <div style="display:flex;justify-content:space-between;gap:10px;">
+                <span style="font-weight:800;font-size:12px;">{{ m.user }}</span>
+                <span class="nx-num" style="font-size:11px;color:var(--nx-faint);">{{ m.time }}</span>
+              </div>
+              <p style="margin:4px 0 0;font-size:13px;line-height:1.5;">{{ m.msg }}</p>
+            </div>
+          </sc-for>
+        </div>
+
+        <form onsubmit="{{ onChatSubmit }}" style="display:flex;gap:8px;border-top:2px solid var(--nx-div);padding:12px 4px 0;">
+          <input class="nx-in" type="text" value="{{ chatDraft }}" oninput="{{ onChatDraftChange }}" maxlength="500" placeholder="{{ chatPlaceholder }}" aria-label="Message the punter lounge" disabled="{{ chatDisabled }}" style="flex:1;min-height:44px;background:var(--nx-surface);border:1px solid var(--nx-div);color:var(--nx-text);padding:10px 12px;font-size:14px;font-family:inherit;"/>
+          <button type="submit" disabled="{{ chatSendDisabled }}" class="nx-btn" style="min-height:44px;background:var(--nx-accent);color:var(--nx-bg);border:none;font-family:inherit;font-weight:800;font-size:13px;padding:0 18px;cursor:pointer;">Send</button>
+        </form>
+      </div>
+    </sc-if>
+  </main>
+
+  <!-- ===== FOOTER ===== -->
+  <footer style="border-top:2px solid var(--nx-div);padding:22px 20px;max-width:1180px;margin:0 auto;width:100%;">
+    <p style="font-size:12px;line-height:1.7;color:var(--nx-muted);max-width:760px;margin:0;">
+      NexusBet AI reads public fixture and odds data. It places no bets and is not affiliated with any sportsbook. Displayed probabilities are bookmaker prices with the margin removed, not forecasts, and the win rate counts only picks this app recorded before kickoff. Betting risks real money and past outcomes never predict future ones. If gambling stops being fun, support is available at <a href="https://www.begambleaware.org/" target="_blank" rel="noreferrer noopener">BeGambleAware</a>. 18+ only.
+    </p>
+  </footer>
+
+  <!-- ===== RATIONALE ===== -->
+  <section style="border-top:2px solid var(--nx-div);background:var(--nx-surface);padding:28px 20px 40px;">
+    <div style="max-width:760px;margin:0 auto;">
+      <h2 style="font-size:18px;margin:0 0 12px;">Design rationale</h2>
+      <p style="font-size:13px;line-height:1.7;color:var(--nx-muted);margin:0 0 10px;">The point of view: this is a research terminal, not a tipster site, so restraint is the brand. One accent (green) does all the signalling; everything else is set in ink-on-charcoal, flat and ruled rather than boxed. Rows and rules replace the equal-weight card grid, so a Champions League tie can read bigger than a third-tier one and a 200-fixture day still scans.</p>
+      <p style="font-size:13px;line-height:1.7;color:var(--nx-muted);margin:0 0 10px;">Conventions broken on purpose: with a single accent available, colour is reserved for the settled win and the live indicator — nothing else earns it. A loss or a pending pick is told through weight, an icon and an explicit label, never a second colour. "High confidence" is a bold row and a small flush tag, not another glowing badge. Chat is a flush, ruled message list, not rounded bubbles. Zero corner radius, Archivo throughout, tabular figures on every number.</p>
+      <p style="font-size:13px;line-height:1.7;color:var(--nx-muted);margin:0;">Every "not yet" state — an empty tracker, an empty lounge, a day with no fixtures — is designed as its own considered screen rather than a grey box, because a new deployment shows these states first.</p>
+    </div>
+  </section>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+
+const SPORT_LABELS = { football: 'Football', basketball: 'Basketball', volleyball: 'Volleyball' };
+
+function hash(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) { h = (h * 31 + str.charCodeAt(i)) | 0; }
+  return Math.abs(h);
+}
+function rand(seed, n) { return hash(seed + ':' + n) % 1000 / 1000; }
+
+const LEAGUES = [
+  { key: 'epl', sport: 'football', name: 'Premier League', tier: 'major' },
+  { key: 'ucl', sport: 'football', name: 'UEFA Champions League', tier: 'major' },
+  { key: 'laliga', sport: 'football', name: 'La Liga', tier: 'major' },
+  { key: 'seriea', sport: 'football', name: 'Serie A', tier: 'mid' },
+  { key: 'nwsl', sport: 'football', name: 'NWSL (Women)', tier: 'mid' },
+  { key: 'd1f', sport: 'football', name: 'Division 1 Féminine', tier: 'minor' },
+  { key: 'eredivisie', sport: 'football', name: 'Eredivisie', tier: 'minor' },
+  { key: 'nba', sport: 'basketball', name: 'NBA', tier: 'major' },
+  { key: 'eurow', sport: 'basketball', name: 'EuroLeague Women', tier: 'mid' },
+  { key: 'volleya1', sport: 'volleyball', name: 'Serie A1 Volley', tier: 'mid' },
+  { key: 'cevcl', sport: 'volleyball', name: 'CEV Champions League Volley', tier: 'minor' },
+];
+
+const TEAMS = {
+  epl: ['Arsenal', 'Liverpool', 'Manchester City', 'Aston Villa', 'Newcastle United', 'Brighton', 'Tottenham', 'Chelsea', 'Fulham', 'Brentford'],
+  ucl: ['Real Madrid', 'Bayern Munich', 'Inter Milan', 'Paris Saint-Germain', 'Borussia Dortmund', 'Benfica'],
+  laliga: ['Barcelona', 'Atletico Madrid', 'Real Sociedad', 'Villarreal', 'Athletic Bilbao', 'Girona'],
+  seriea: ['Juventus', 'AC Milan', 'Napoli', 'Roma', 'Atalanta', 'Fiorentina'],
+  nwsl: ['Portland Thorns', 'NJ/NY Gotham', 'OL Reign', 'Kansas City Current', 'Orlando Pride', 'Washington Spirit'],
+  d1f: ['Lyon Féminin', 'PSG Féminine', 'Paris FC', 'Fleury 91'],
+  eredivisie: ['Ajax', 'PSV Eindhoven', 'Feyenoord', 'AZ Alkmaar'],
+  nba: ['Boston Celtics', 'Denver Nuggets', 'LA Lakers', 'Milwaukee Bucks', 'Golden State Warriors', 'Phoenix Suns'],
+  eurow: ['Fenerbahce Women', 'USK Praha', 'Sopron Basket', 'Casademont Zaragoza'],
+  volleya1: ['Perugia', 'Trentino', 'Civitanova', 'Modena'],
+  cevcl: ['Zaksa Kedzierzyn', 'Itas Trentino', 'Sir Safety Perugia'],
+};
+
+function pick(arr, i) { return arr[i % arr.length]; }
+
+function buildFootballModel(seed, reliable, trainedOn) {
+  const homeP = 34 + Math.round(rand(seed, 1) * 30);
+  const drawP = 20 + Math.round(rand(seed, 2) * 12);
+  const awayP = 100 - homeP - drawP;
+  return {
+    model: 'poisson',
+    reliable, trainedOn,
+    expected: { home: (1 + rand(seed, 3) * 2).toFixed(1), away: (0.6 + rand(seed, 4) * 2).toFixed(1), unit: 'xG' },
+    outcome: { home: homeP, draw: drawP, away: awayP },
+    totals: [{ line: 2.5, over: 40 + Math.round(rand(seed, 5) * 25), under: 0 }].map(t => ({ ...t, under: 100 - t.over })),
+    handicaps: [{ handicap: -1, home: 30 + Math.round(rand(seed, 6) * 20), away: 0 }].map(h => ({ ...h, away: 100 - h.home })),
+    btts: { yes: 45 + Math.round(rand(seed, 7) * 20), no: 0 },
+  };
+}
+function buildCourtModel(seed, sport, reliable, trainedOn) {
+  const homeP = 40 + Math.round(rand(seed, 1) * 30);
+  return {
+    model: sport === 'basketball' ? 'normal-regression' : 'logistic-sets',
+    reliable, trainedOn,
+    expected: sport === 'basketball'
+      ? { home: 108 + Math.round(rand(seed, 3) * 14), away: 104 + Math.round(rand(seed, 4) * 14), unit: 'pts' }
+      : { home: (2.3 + rand(seed, 3)).toFixed(1), away: (1.6 + rand(seed, 4)).toFixed(1), unit: 'sets' },
+    outcome: { home: homeP, draw: null, away: 100 - homeP },
+    totals: [], handicaps: [], btts: null,
+  };
+}
+
+function buildInsight(seed, home, away, model, oddsAvailable, marketP) {
+  const bullets = [
+    { category: 'Model', text: `${model.model} fitted on ${model.trainedOn} finished matches, weighted toward recent form.` },
+    { category: 'Team form', text: `${home} have taken ${2 + (hash(seed + 'h') % 4)} wins from their last 6; ${away} have taken ${1 + (hash(seed + 'a') % 4)}.` },
+    { category: 'Head-to-head', text: `Last meeting favoured ${hash(seed + 'h2h') % 2 === 0 ? home : away}, in a low-scoring game.` },
+  ];
+  let value = null;
+  if (oddsAvailable) {
+    const modelP = model.outcome.home;
+    const gap = modelP - marketP;
+    value = {
+      outcomes: [
+        { label: 'Home', odd: (1.4 + rand(seed, 21) * 2.4).toFixed(2), modelProbability: modelP, marketProbability: marketP, gap, expectedValue: (rand(seed, 22) * 10 - 3).toFixed(1) },
+      ],
+    };
+    bullets.push({ category: 'Expected value', text: `Model disagrees with the market by ${gap > 0 ? '+' : ''}${gap} points on the home side; a positive gap is a prompt to look closer, not a proven edge.` });
+  }
+  return { bullets, value, caveats: ['The closing market is usually better calibrated than a single-season model.'] };
+}
+
+function buildFixture(league, i, opts = {}) {
+  const teams = TEAMS[league.key];
+  const home = pick(teams, i);
+  const away = pick(teams, i + 1 + (i % 3));
+  const seed = league.key + i;
+  const sport = league.sport;
+  const oddsAvailable = opts.unpriced ? false : true;
+  const marketP = 30 + Math.round(rand(seed, 9) * 45);
+  const reliable = !opts.provisional;
+  const trainedOn = opts.provisional ? 8 : opts.noModel ? 0 : 60 + Math.round(rand(seed, 10) * 180);
+  const model = opts.noModel ? null : (sport === 'football' ? buildFootballModel(seed, reliable, trainedOn) : buildCourtModel(seed, sport, reliable, trainedOn));
+  const highConfidence = !!opts.highConfidence;
+  const kickoffHours = 2 + i * 3 + Math.round(rand(seed, 11) * 4);
+  const kickoff = new Date(Date.now() + kickoffHours * 3600 * 1000);
+  return {
+    id: seed, sport, league: league.name, tier: league.tier,
+    home, away, kickoff,
+    oddsAvailable,
+    odd: (1.4 + rand(seed, 12) * 3.2).toFixed(2),
+    bookmaker: 'Pinnacle',
+    prediction: `${home} to win`,
+    probability: marketP,
+    highConfidence, confidence: highConfidence ? 78 + Math.round(rand(seed, 13) * 15) : null,
+    model,
+    insight: model ? buildInsight(seed, home, away, model, oddsAvailable, marketP) : null,
+    slipCode: `NB1-${sport.slice(0, 2).toUpperCase()}-${seed}-1X2-H-${(hash(seed + 'chk') % 90 + 10)}`,
+  };
+}
+
+function buildAllFixtures() {
+  const out = [];
+  LEAGUES.forEach((league) => {
+    const count = league.tier === 'major' ? 5 : 4;
+    for (let i = 0; i < count; i++) {
+      const opts = {};
+      if (league.key === 'epl' && i === 0) opts.highConfidence = true;
+      if (league.key === 'seriea' && i === 1) opts.unpriced = true;
+      if (league.key === 'd1f' && i === 0) opts.provisional = true;
+      if (league.key === 'eredivisie' && i === 2) opts.noModel = true;
+      if (league.key === 'nba' && i === 0) opts.highConfidence = true;
+      out.push(buildFixture(league, i, opts));
+    }
+  });
+  return out;
+}
+
+function formatKickoff(d) {
+  return d.toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' });
+}
+
+function groupBulletsTop() {}
+
+class Component extends DCLogic {
+  state = {
+    activeTab: 'predictions',
+    scenario: 'live',
+    sportFilter: '',
+    collapsedLeagues: {},
+    expandedFixtures: {},
+    expandedMarkets: {},
+    expandedInsights: {},
+    trackerWhyOpen: {},
+    searchQuery: '', searchSport: '', searchDays: 3, searchStatus: 'idle',
+    chatConn: 'open',
+    chatDraft: '',
+    chatMessages: [
+      { id: 1, user: 'PitchsideDan', time: '18:42', msg: 'Anyone else seeing the provisional tag on the D1F fixtures? small sample I guess.' },
+      { id: 2, user: 'QuietQuant', time: '18:44', msg: 'Yeah, 8 matches trained. Board flags it, so fine by me.' },
+      { id: 3, user: 'Me (Manager)', time: '18:45', msg: 'Appreciate that it just says so instead of hiding it.' },
+    ],
+  };
+
+  componentDidMount() { this.fixtures = buildAllFixtures(); }
+
+  toggleLeague = (key) => () => this.setState(s => ({ collapsedLeagues: { ...s.collapsedLeagues, [key]: !s.collapsedLeagues[key] } }));
+  toggleFixture = (id) => () => this.setState(s => ({ expandedFixtures: { ...s.expandedFixtures, [id]: !s.expandedFixtures[id] } }));
+  toggleMarkets = (id) => () => this.setState(s => ({ expandedMarkets: { ...s.expandedMarkets, [id]: !s.expandedMarkets[id] } }));
+  toggleInsight = (id) => () => this.setState(s => ({ expandedInsights: { ...s.expandedInsights, [id]: !s.expandedInsights[id] } }));
+  toggleWhy = (key) => () => this.setState(s => ({ trackerWhyOpen: { ...s.trackerWhyOpen, [key]: !s.trackerWhyOpen[key] } }));
+
+  onSearchInput = (e) => {
+    const q = e.target.value;
+    this.setState({ searchQuery: q, searchStatus: q.trim().length >= 2 ? 'searching' : 'idle' });
+    clearTimeout(this._searchTimer);
+    if (q.trim().length >= 2) {
+      this._searchTimer = setTimeout(() => {
+        if (q.toLowerCase().includes('fail')) this.setState({ searchStatus: 'error' });
+        else this.setState({ searchStatus: 'results' });
+      }, 450);
+    }
+  };
+  onSearchSportChange = (e) => this.setState({ searchSport: e.target.value });
+  onSearchDaysChange = (e) => this.setState({ searchDays: Number(e.target.value) });
+  onClearSearch = () => this.setState({ searchQuery: '', searchStatus: 'idle' });
+
+  onScenarioChange = (e) => this.setState({ scenario: e.target.value });
+  onRetry = () => this.setState({ scenario: 'live' });
+  setSportFilter = (v) => () => this.setState({ sportFilter: v });
+  setTab = (id) => () => this.setState({ activeTab: id });
+
+  onChatConnChange = (e) => this.setState({ chatConn: e.target.value });
+  onChatDraftChange = (e) => this.setState({ chatDraft: e.target.value });
+  onChatSubmit = (e) => {
+    e.preventDefault();
+    const trimmed = this.state.chatDraft.trim();
+    if (!trimmed || this.state.chatConn !== 'open') return;
+    this.setState(s => ({
+      chatDraft: '',
+      chatMessages: [...s.chatMessages, { id: Date.now(), user: 'Me (Manager)', time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), msg: trimmed }],
+    }));
+  };
+
+  buildFixtureVal(f) {
+    const id = f.id;
+    const expanded = !!this.state.expandedFixtures[id];
+    const marketsOpen = !!this.state.expandedMarkets[id];
+    const insightOpen = !!this.state.expandedInsights[id];
+    const kickoffText = formatKickoff(f.kickoff);
+    return {
+      id, sport: f.sport, sportLabel: SPORT_LABELS[f.sport], league: f.league,
+      home: f.home, away: f.away, kickoffText,
+      oddsAvailable: f.oddsAvailable, odd: f.odd, bookmaker: f.bookmaker,
+      prediction: f.prediction, probability: f.probability,
+      highConfidence: f.highConfidence, confidence: f.confidence,
+      hasModel: !!f.model, model: f.model,
+      modelReliable: f.model ? f.model.reliable : false,
+      modelTrainedOn: f.model ? f.model.trainedOn : 0,
+      expanded, toggleExpand: this.toggleFixture(id),
+      marketsOpen, toggleMarkets: this.toggleMarkets(id),
+      insightOpen, toggleInsight: this.toggleInsight(id),
+      hasInsight: !!f.insight, insight: f.insight,
+      slipCode: f.slipCode,
+    };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const scenario = s.scenario;
+    const boardStateOk = scenario === 'live' || scenario === 'sample' || scenario === 'stale';
+    const fixtures = this.fixtures || (this.fixtures = buildAllFixtures());
+
+    const filtered = fixtures.filter(f => !s.sportFilter || f.sport === s.sportFilter);
+    const grouped = [];
+    const seen = {};
+    filtered.forEach(f => {
+      if (!seen[f.league]) { seen[f.league] = { league: f.league, sport: f.sport, fixtures: [] }; grouped.push(seen[f.league]); }
+      seen[f.league].fixtures.push(f);
+    });
+
+    const leagueGroups = (scenario === 'empty') ? [] : grouped.map(g => {
+      const open = !s.collapsedLeagues[g.league];
+      return {
+        key: g.league, league: g.league, sportLabel: SPORT_LABELS[g.sport],
+        countLabel: `${g.fixtures.length} fixture${g.fixtures.length === 1 ? '' : 's'}`,
+        open, toggleLabel: open ? 'Hide' : 'Show',
+        onToggle: this.toggleLeague(g.league),
+        fixtures: g.fixtures.map(f => this.buildFixtureVal(f)),
+      };
+    });
+
+    const totalFixtureCount = scenario === 'empty' ? 0 : filtered.length;
+    const highConfCount = filtered.filter(f => f.highConfidence).length;
+
+    const tabBaseStyle = "background:none;border:none;border-bottom:2px solid transparent;color:var(--nx-muted);font-family:inherit;font-weight:800;font-size:14px;padding:10px 2px 12px;min-height:44px;cursor:pointer;";
+    const tabActiveStyle = "background:none;border:none;border-bottom:2px solid var(--nx-accent);color:var(--nx-text);font-family:inherit;font-weight:800;font-size:14px;padding:10px 2px 12px;min-height:44px;cursor:pointer;";
+    const chipBaseStyle = "background:transparent;border:1px solid var(--nx-div);color:var(--nx-muted);font-family:inherit;font-weight:700;font-size:12px;padding:8px 12px;min-height:36px;cursor:pointer;";
+    const chipActiveStyle = "background:var(--nx-text);border:1px solid var(--nx-text);color:var(--nx-bg);font-family:inherit;font-weight:700;font-size:12px;padding:8px 12px;min-height:36px;cursor:pointer;";
+    const statusBaseStyle = "border:1px solid var(--nx-div);color:var(--nx-muted);font-weight:700;font-size:11px;letter-spacing:.04em;padding:4px 8px;display:inline-block;";
+    const statusStrongStyle = "border:1px solid var(--nx-accent);color:var(--nx-text);font-weight:800;font-size:11px;letter-spacing:.04em;padding:4px 8px;display:inline-block;";
+
+    const trackerRows = scenario === 'empty' ? [] : fixtures.slice(0, 10).map((f, idx) => {
+      const key = f.id;
+      const status = idx % 5 === 0 ? 'PENDING' : idx % 4 === 0 ? 'LOSS' : idx % 7 === 0 ? 'VOID' : 'WIN';
+      const whyOpen = !!s.trackerWhyOpen[key];
+      return {
+        key, match: `${f.home} vs ${f.away}`, leagueLine: `${SPORT_LABELS[f.sport]} · ${f.league}`,
+        pickLabel: f.prediction, oddLabel: f.oddsAvailable ? f.odd : '—',
+        statusLabel: status, statusStyle: status === 'WIN' ? statusStrongStyle : statusBaseStyle,
+        whyOpen, whyLabel: whyOpen ? 'Hide reasoning' : 'Why this pick',
+        onToggleWhy: this.toggleWhy(key),
+        justification: `Recorded at ${f.odd} on ${f.bookmaker}. Model gave the home side ${f.model ? f.model.outcome.home : 'n/a'}%. Graded ${status} against the final score.`,
+      };
+    });
+    const wins = trackerRows.filter(r => r.statusLabel === 'WIN').length;
+    const losses = trackerRows.filter(r => r.statusLabel === 'LOSS').length;
+    const settledCount = wins + losses;
+    const hasSettled = settledCount > 0 && scenario !== 'empty';
+
+    const searchInactive = s.searchQuery.trim().length < 2;
+    const searchActive = !searchInactive;
+    const searchState = s.searchStatus;
+    const searchIndex = fixtures.filter(f => (f.home + f.away + f.league).toLowerCase().includes(s.searchQuery.toLowerCase()) && (!s.searchSport || f.sport === s.searchSport));
+
+    return {
+      connOpen: scenario !== 'error', connNotOpen: scenario === 'error',
+      connLabel: scenario === 'error' ? 'Offline' : 'Connected',
+      isLoungeTab: s.activeTab === 'chat',
+      scenario, onScenarioChange: this.onScenarioChange,
+      chatConn: s.chatConn, onChatConnChange: this.onChatConnChange,
+
+      tabs: [
+        { id: 'predictions', label: 'Board', current: s.activeTab === 'predictions' ? 'true' : undefined, onClick: this.setTab('predictions'), style: s.activeTab === 'predictions' ? tabActiveStyle : tabBaseStyle },
+        { id: 'tracker', label: 'Tracker', current: s.activeTab === 'tracker' ? 'true' : undefined, onClick: this.setTab('tracker'), style: s.activeTab === 'tracker' ? tabActiveStyle : tabBaseStyle },
+        { id: 'chat', label: 'Lounge', current: s.activeTab === 'chat' ? 'true' : undefined, onClick: this.setTab('chat'), style: s.activeTab === 'chat' ? tabActiveStyle : tabBaseStyle },
+      ],
+      searchInactive,
+
+      searchQuery: s.searchQuery, onSearchInput: this.onSearchInput,
+      searchSport: s.searchSport, onSearchSportChange: this.onSearchSportChange,
+      searchDays: s.searchDays, onSearchDaysChange: this.onSearchDaysChange,
+      searchActive,
+      searchStateSearching: searchState === 'searching',
+      searchStateError: searchState === 'error',
+      searchStateResults: searchState === 'results',
+      searchHasResults: searchState === 'results' && searchIndex.length > 0,
+      searchNoResults: searchState === 'results' && searchIndex.length === 0,
+      searchRows: searchIndex.slice(0, 8).map(f => this.buildFixtureVal(f)),
+      searchSummaryText: `Scanned ${fixtures.length} scheduled fixtures across ${s.searchDays} day${s.searchDays === 1 ? '' : 's'}${s.searchSport ? ` in ${SPORT_LABELS[s.searchSport]}` : ''}. Matched ${searchIndex.length}.`,
+      onClearSearch: this.onClearSearch,
+
+      showBoard: searchInactive && s.activeTab === 'predictions',
+      showTracker: searchInactive && s.activeTab === 'tracker',
+      showLounge: searchInactive && s.activeTab === 'chat',
+
+      showStaleBanner: boardStateOk && scenario === 'stale',
+      showSampleBanner: boardStateOk && scenario === 'sample',
+      showLiveBanner: boardStateOk && scenario === 'live',
+
+      boardHighConfLine: boardStateOk && highConfCount > 0,
+      highConfCount, totalFixtureCount,
+
+      boardStateOk, boardStateLoading: scenario === 'loading', boardStateError: scenario === 'error', boardStateEmpty: scenario === 'empty',
+      skeletonRows: [1, 2, 3, 4, 5, 6],
+      onRetry: this.onRetry,
+
+      sportChips: [
+        { label: 'All sports', onClick: this.setSportFilter(''), style: s.sportFilter === '' ? chipActiveStyle : chipBaseStyle },
+        { label: 'Football', onClick: this.setSportFilter('football'), style: s.sportFilter === 'football' ? chipActiveStyle : chipBaseStyle },
+        { label: 'Basketball', onClick: this.setSportFilter('basketball'), style: s.sportFilter === 'basketball' ? chipActiveStyle : chipBaseStyle },
+        { label: 'Volleyball', onClick: this.setSportFilter('volleyball'), style: s.sportFilter === 'volleyball' ? chipActiveStyle : chipBaseStyle },
+      ],
+      leagueGroups,
+
+      winRateText: hasSettled ? `${Math.round((wins / settledCount) * 100)}%` : '—',
+      winRateHint: hasSettled ? `${wins}W / ${losses}L over ${settledCount} settled` : 'No settled picks yet',
+      streakText: scenario === 'empty' ? '0' : '3',
+      pendingText: scenario === 'empty' ? '0' : String(trackerRows.filter(r => r.statusLabel === 'PENDING').length),
+      pendingHint: 'Graded after each fixture ends',
+      trackerHasRows: trackerRows.length > 0,
+      trackerEmpty: trackerRows.length === 0,
+      trackerRows,
+
+      chatStatusCopy: s.chatConn === 'open' ? 'Connected to the lounge engine.' : s.chatConn === 'connecting' ? 'Connecting to the lounge engine…' : 'Disconnected — retrying automatically.',
+      chatOnlineText: s.chatConn === 'open' ? '24' : '0',
+      chatEmpty: s.chatConn === 'disconnected' ? true : s.chatMessages.length === 0,
+      chatMessages: s.chatConn === 'disconnected' ? [] : s.chatMessages,
+      chatDraft: s.chatDraft, onChatDraftChange: this.onChatDraftChange, onChatSubmit: this.onChatSubmit,
+      chatPlaceholder: s.chatConn === 'open' ? 'Message the lounge…' : 'Reconnecting…',
+      chatDisabled: s.chatConn !== 'open',
+      chatSendDisabled: s.chatConn !== 'open' || !s.chatDraft.trim(),
+    };
+  }
+}
+
+</script>
+</body>
+</html>

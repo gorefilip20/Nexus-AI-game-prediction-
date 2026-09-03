@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="border-top:1px solid var(--nx-div);">
+  <button type="button" class="nx-row" onclick="{{ f.toggleExpand }}" aria-expanded="{{ f.expanded }}" style="width:100%;background:none;border:none;color:var(--nx-text);font-family:inherit;text-align:left;cursor:pointer;padding:12px 4px;display:grid;grid-template-columns:64px 1fr auto auto 18px;gap:12px;align-items:center;min-height:44px;">
+    <span class="nx-num" style="font-size:12px;color:var(--nx-faint);white-space:nowrap;overflow:hidden;">{{ f.kickoffText }}</span>
+    <span style="min-width:0;overflow:hidden;">
+      <span style="{{ f.nameStyle }}">{{ f.home }} vs {{ f.away }}</span>
+      <sc-if value="{{ f.highConfidence }}">
+        <span style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--nx-accent);">High confidence · {{ f.confidence }}%</span>
+      </sc-if>
+    </span>
+    <span class="nx-num" style="font-size:13px;font-weight:700;white-space:nowrap;">
+      <sc-if value="{{ f.oddsAvailable }}">{{ f.odd }}</sc-if>
+      <sc-if value="{{ f.oddsAvailableNot }}">
+        <span style="font-size:11px;font-weight:700;color:var(--nx-faint);border:1px solid var(--nx-div);padding:3px 6px;">Unpriced</span>
+      </sc-if>
+    </span>
+    <span class="nx-num" style="font-size:12px;color:var(--nx-muted);white-space:nowrap;">
+      <sc-if value="{{ f.oddsAvailable }}">{{ f.probability }}%</sc-if>
+    </span>
+    <span style="font-size:12px;color:var(--nx-faint);text-align:right;">{{ f.chevron }}</span>
+  </button>
+
+  <sc-if value="{{ f.expanded }}">
+    <div style="padding:0 4px 18px 4px;display:flex;flex-direction:column;gap:14px;">
+
+      <div style="font-size:11px;color:var(--nx-faint);">{{ f.sportLabel }} · {{ f.league }}</div>
+
+      <sc-if value="{{ f.hasModelNot }}">
+        <div style="border:1px solid var(--nx-div);padding:10px 12px;font-size:12px;color:var(--nx-muted);">No model output — not enough finished fixtures in this league to fit one.</div>
+      </sc-if>
+
+      <sc-if value="{{ f.hasModel }}">
+        <div style="border:1px solid var(--nx-div);padding:12px 14px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+            <span style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--nx-faint);">Model probability</span>
+            <span class="nx-num" style="font-size:11px;color:var(--nx-faint);">{{ f.expectedText }}</span>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;"><span>{{ f.home }}</span><span class="nx-num" style="font-weight:700;">{{ f.homeP }}%</span></div>
+              <div style="height:4px;background:var(--nx-surface-2);"><div style="height:100%;background:var(--nx-accent);width:{{ f.homeBarWidth }};"></div></div>
+            </div>
+            <sc-if value="{{ f.hasDraw }}">
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;"><span>Draw</span><span class="nx-num" style="font-weight:700;">{{ f.drawP }}%</span></div>
+                <div style="height:4px;background:var(--nx-surface-2);"><div style="height:100%;background:var(--nx-muted);width:{{ f.drawBarWidth }};"></div></div>
+              </div>
+            </sc-if>
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;"><span>{{ f.away }}</span><span class="nx-num" style="font-weight:700;">{{ f.awayP }}%</span></div>
+              <div style="height:4px;background:var(--nx-surface-2);"><div style="height:100%;background:var(--nx-muted);width:{{ f.awayBarWidth }};"></div></div>
+            </div>
+          </div>
+
+          <sc-if value="{{ f.provisional }}">
+            <div style="margin-top:8px;font-size:11px;color:var(--nx-accent-hi);">Provisional: fitted on only {{ f.modelTrainedOn }} matches.</div>
+          </sc-if>
+
+          <button type="button" onclick="{{ f.toggleMarkets }}" style="margin-top:10px;background:none;border:none;color:var(--nx-faint);font-family:inherit;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.05em;padding:8px 0;cursor:pointer;min-height:32px;">{{ f.marketsToggleLabel }}</button>
+
+          <sc-if value="{{ f.marketsOpen }}">
+            <div style="border-top:1px solid var(--nx-div);padding-top:8px;font-size:11px;color:var(--nx-muted);">
+              Fitted on {{ f.modelTrainedOn }} finished matches from this league. Full market breakdown (over/under, handicap, both-teams-to-score, correct score) reads off this same probability model.
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ f.hasInsight }}">
+        <div style="border:1px solid var(--nx-div);">
+          <button type="button" onclick="{{ f.toggleInsight }}" aria-expanded="{{ f.insightOpen }}" style="width:100%;background:none;border:none;display:flex;justify-content:space-between;align-items:center;padding:10px 12px;cursor:pointer;color:var(--nx-text);font-family:inherit;min-height:44px;">
+            <span style="font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;">AI insight & analysis</span>
+            <span style="font-size:11px;color:var(--nx-faint);">{{ f.insightToggleLabel }}</span>
+          </button>
+          <sc-if value="{{ f.insightOpen }}">
+            <div style="border-top:1px solid var(--nx-div);padding:12px;display:flex;flex-direction:column;gap:10px;">
+              <sc-for list="{{ f.insightGroups }}" as="grp" hint-placeholder-count="3">
+                <div>
+                  <div style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--nx-faint);margin-bottom:4px;">{{ grp.category }}</div>
+                  <sc-for list="{{ grp.texts }}" as="t" hint-placeholder-count="1">
+                    <p style="margin:0 0 4px;font-size:12px;line-height:1.5;color:var(--nx-muted);">{{ t }}</p>
+                  </sc-for>
+                </div>
+              </sc-for>
+
+              <sc-if value="{{ f.hasValueTable }}">
+                <div class="nx-scroll" style="overflow-x:auto;">
+                  <table style="border-collapse:collapse;font-size:11px;min-width:420px;">
+                    <thead>
+                      <tr style="border-bottom:1px solid var(--nx-div);text-align:left;color:var(--nx-faint);text-transform:uppercase;letter-spacing:.04em;">
+                        <th style="padding:6px 10px 6px 0;">Outcome</th><th style="padding:6px 10px;">Price</th><th style="padding:6px 10px;">Model</th><th style="padding:6px 10px;">Market</th><th style="padding:6px 10px;">Gap</th><th style="padding:6px 0;">EV</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <sc-for list="{{ f.valueRows }}" as="v" hint-placeholder-count="1">
+                        <tr style="border-bottom:1px solid var(--nx-div);">
+                          <td style="padding:6px 10px 6px 0;font-weight:700;">{{ v.label }}</td>
+                          <td class="nx-num" style="padding:6px 10px;">{{ v.odd }}</td>
+                          <td class="nx-num" style="padding:6px 10px;">{{ v.modelProbability }}%</td>
+                          <td class="nx-num" style="padding:6px 10px;">{{ v.marketProbability }}%</td>
+                          <td class="nx-num" style="padding:6px 10px;">{{ v.gapText }}</td>
+                          <td class="nx-num" style="padding:6px 0;font-weight:700;">{{ v.evText }}</td>
+                        </tr>
+                      </sc-for>
+                    </tbody>
+                  </table>
+                </div>
+              </sc-if>
+
+              <div style="border:1px solid var(--nx-div);padding:8px 10px;">
+                <p style="margin:0;font-size:10px;line-height:1.5;color:var(--nx-accent-hi);">{{ f.caveatText }}</p>
+              </div>
+
+              <p style="margin:0;font-size:10px;line-height:1.5;color:var(--nx-faint);border-top:1px solid var(--nx-div);padding-top:8px;">Generated by a rule-based engine from the fitted model, this league's finished results and the live odds ladder. No part of this text is written by a language model.</p>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid var(--nx-div);padding:10px 12px;flex-wrap:wrap;">
+        <div style="min-width:0;">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--nx-faint);margin-bottom:2px;">Slip code</div>
+          <code class="nx-num" style="font-size:13px;font-weight:700;color:var(--nx-text);word-break:break-all;">{{ f.slipCode }}</code>
+        </div>
+        <button type="button" onclick="{{ copy }}" style="min-height:40px;background:transparent;border:1px solid var(--nx-div);color:var(--nx-text);font-family:inherit;font-weight:700;font-size:12px;padding:0 14px;cursor:pointer;">{{ copyLabel }}</button>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { copied: false };
+
+  copy = async () => {
+    try { await navigator.clipboard.writeText(this.props.f.slipCode); } catch (e) {}
+    this.setState({ copied: true });
+    clearTimeout(this._t);
+    this._t = setTimeout(() => this.setState({ copied: false }), 2000);
+  };
+
+  renderVals() {
+    const f = this.props.f || {};
+    const model = f.model;
+    const homeP = model ? model.outcome.home : 0;
+    const drawP = model && model.outcome.draw !== null && model.outcome.draw !== undefined ? model.outcome.draw : null;
+    const awayP = model ? model.outcome.away : 0;
+    const insight = f.insight;
+    const groups = insight ? groupBullets(insight.bullets) : [];
+    const value = insight ? insight.value : null;
+    const valueRows = value ? value.outcomes.map(o => ({
+      label: o.label === 'Home' ? f.home : o.label === 'Away' ? f.away : o.label,
+      odd: o.odd, modelProbability: o.modelProbability, marketProbability: o.marketProbability,
+      gapText: o.gap === null ? '—' : `${o.gap > 0 ? '+' : ''}${o.gap}`,
+      evText: `${o.expectedValue > 0 ? '+' : ''}${o.expectedValue}%`,
+    })) : [];
+
+    return {
+      f: {
+        ...f,
+        oddsAvailableNot: !f.oddsAvailable,
+        chevron: f.expanded ? '−' : '+',
+        nameStyle: f.highConfidence
+          ? "font-weight:800;font-size:14px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
+          : "font-weight:600;font-size:14px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;",
+        hasModelNot: !f.hasModel,
+        expectedText: model ? `${model.expected.home}–${model.expected.away} ${model.expected.unit}` : '',
+        homeP, drawP, awayP, hasDraw: drawP !== null,
+        homeBarWidth: `${Math.min(Math.max(homeP, 0), 100)}%`,
+        drawBarWidth: drawP !== null ? `${Math.min(Math.max(drawP, 0), 100)}%` : '0%',
+        awayBarWidth: `${Math.min(Math.max(awayP, 0), 100)}%`,
+        provisional: model ? !model.reliable : false,
+        marketsToggleLabel: f.marketsOpen ? 'Hide markets' : 'More markets',
+        insightToggleLabel: f.insightOpen ? 'Hide' : 'Show',
+        insightGroups: groups,
+        hasValueTable: !!value,
+        valueRows,
+        caveatText: insight && insight.caveats ? insight.caveats[0] : '',
+      },
+      copy: this.copy,
+      copyLabel: this.state.copied ? 'Copied' : 'Copy',
+    };
+  }
+}
+
+function groupBullets(bullets) {
+  const order = ['Model', 'Team form', 'Head-to-head', 'Expected value'];
+  const map = {};
+  (bullets || []).forEach(b => { (map[b.category] = map[b.category] || []).push(b.text); });
+  return order.filter(c => map[c]).map(c => ({ category: c, texts: map[c] }));
+}
+</script>
+</body>
+</html>

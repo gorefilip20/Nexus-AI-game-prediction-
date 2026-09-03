@@ -1,11 +1,9 @@
 import { useState } from 'react';
-import { RefreshCw } from 'lucide-react';
 
 import NavBar from './components/NavBar.jsx';
 import PredictionsPanel from './components/PredictionsPanel.jsx';
 import TrackerPanel from './components/TrackerPanel.jsx';
 import ChatPanel from './components/ChatPanel.jsx';
-import SearchBar from './components/SearchBar.jsx';
 import SearchResults from './components/SearchResults.jsx';
 import { useLoungeSocket } from './hooks/useLoungeSocket.js';
 import { useSlipData } from './hooks/useSlipData.js';
@@ -13,42 +11,14 @@ import { useFixtureSearch } from './hooks/useFixtureSearch.js';
 
 const LOCAL_USERNAME = 'Me (Manager)';
 
-function LoadingState() {
-  return (
-    <div className="flex items-center gap-3 rounded-xl border border-[#213743] bg-[#1a2c38] p-6 text-sm text-[#8a96a3]">
-      <RefreshCw className="h-4 w-4 animate-spin text-[#00e701]" />
-      Loading engine data…
-    </div>
-  );
-}
-
-function ErrorState({ onRetry, message }) {
-  return (
-    <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-6">
-      <h2 className="mb-1 font-extrabold text-white">Engine unreachable</h2>
-      <p className="mb-4 text-sm text-red-200/80">
-        {message ?? 'Could not load slips from the Fastify engine.'} Start it with{' '}
-        <code className="font-mono text-red-200">npm run dev:server</code> and retry.
-      </p>
-      <button
-        type="button"
-        onClick={onRetry}
-        className="rounded-lg bg-[#00e701] px-4 py-2 text-sm font-black text-black transition hover:bg-[#00c900]"
-      >
-        Retry
-      </button>
-    </div>
-  );
-}
-
 export default function App() {
   const [activeTab, setActiveTab] = useState('predictions');
   const { predictions, tracker, meta, state, error, reload } = useSlipData();
   const { messages, online, status, notice, send } = useLoungeSocket();
   const search = useFixtureSearch();
 
-  // A live search takes over the main area: it spans every sport, so scoping it
-  // to whichever tab happens to be open would hide most of its results.
+  // A live search takes over the main area: results span every sport, so scoping
+  // them to whichever tab is open would hide most of them.
   const searchActive = search.query.trim().length >= 2;
 
   const renderPanel = () => {
@@ -59,7 +29,6 @@ export default function App() {
           state={search.state}
           response={search.response}
           error={search.error}
-          onClear={search.clear}
         />
       );
     }
@@ -77,53 +46,66 @@ export default function App() {
       );
     }
 
-    if (state === 'loading') return <LoadingState />;
-    if (state === 'error' || !tracker) return <ErrorState onRetry={reload} message={error} />;
+    if (activeTab === 'tracker') {
+      if (state === 'loading' || !tracker) {
+        return <p className="text-[12px] text-nx-faint">Loading the ledger…</p>;
+      }
+      return <TrackerPanel tracker={tracker} meta={meta} />;
+    }
 
-    return activeTab === 'tracker' ? (
-      <TrackerPanel tracker={tracker} meta={meta} />
-    ) : (
-      <PredictionsPanel predictions={predictions} meta={meta} />
+    return (
+      <PredictionsPanel
+        predictions={predictions}
+        meta={meta}
+        state={state}
+        error={error}
+        onRetry={reload}
+      />
     );
   };
 
   return (
-    <div className="min-h-screen bg-[#0f212e] font-sans text-[#b1b6c0] antialiased">
+    <div className="flex min-h-screen flex-col bg-nx-bg text-nx-text">
       <NavBar
         activeTab={activeTab}
         onTabChange={setActiveTab}
         status={status}
-        online={online}
-      />
-
-      <SearchBar
+        searchActive={searchActive}
         query={search.query}
         onQueryChange={search.setQuery}
         sport={search.sport}
         onSportChange={search.setSport}
         days={search.days}
         onDaysChange={search.setDays}
-        state={search.state}
-        onClear={search.clear}
+        onClearSearch={search.clear}
       />
 
-      <main className="mx-auto max-w-6xl p-6">{renderPanel()}</main>
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
+        {renderPanel()}
+      </main>
 
-      <footer className="mx-auto max-w-6xl px-6 pb-10 text-xs leading-relaxed text-[#8a96a3]">
-        NexusBet AI reads public fixture and odds data. It does not place bets and is not
-        affiliated with any sportsbook. Displayed probabilities are bookmaker prices with the
-        margin removed, not forecasts, and the win rate counts only picks this app recorded
-        before kickoff. Betting risks real money and past outcomes never predict future ones.
-        If gambling stops being fun, support is available at{' '}
-        <a
-          href="https://www.begambleaware.org/"
-          target="_blank"
-          rel="noreferrer noopener"
-          className="text-[#00e701] underline underline-offset-2"
-        >
-          BeGambleAware
-        </a>
-        . 18+ only.
+      <footer className="border-t-2 border-nx-div px-4 py-6 sm:px-6">
+        <div className="mx-auto max-w-5xl">
+          <p className="max-w-3xl text-[11px] leading-relaxed text-nx-muted">
+            NexusBet AI reads public fixture and odds data. It places no bets and is not
+            affiliated with any sportsbook. Displayed probabilities are bookmaker prices with
+            the margin removed, not forecasts, and the win rate counts only picks this app
+            recorded before kickoff. Betting risks real money and past outcomes never predict
+            future ones.
+          </p>
+          <p className="mt-3 text-[11px] leading-relaxed text-nx-muted">
+            If gambling stops being fun, support is available at{' '}
+            <a
+              href="https://www.begambleaware.org/"
+              target="_blank"
+              rel="noreferrer noopener"
+              className="font-bold text-nx-accent-hi underline underline-offset-2 hover:text-nx-accent"
+            >
+              BeGambleAware
+            </a>
+            . <span className="font-bold text-nx-text">18+ only.</span>
+          </p>
+        </div>
       </footer>
     </div>
   );

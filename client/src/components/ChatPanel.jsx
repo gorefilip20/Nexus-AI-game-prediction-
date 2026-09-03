@@ -1,38 +1,17 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Send, TriangleAlert } from 'lucide-react';
 
 const MAX_MESSAGE_LENGTH = 500;
 
 const STATUS_COPY = {
-  open: 'Connected to the lounge engine.',
-  connecting: 'Connecting to the lounge engine…',
+  open: 'Connected to the lounge.',
+  connecting: 'Connecting to the lounge…',
   disconnected: 'Disconnected — retrying automatically.',
 };
-
-function MessageBubble({ message, isOwn }) {
-  return (
-    <div
-      className={`rounded-lg border p-3 ${
-        isOwn ? 'border-[#00e701]/25 bg-[#00e701]/5' : 'border-[#213743] bg-[#0f212e]'
-      }`}
-    >
-      <div className="flex items-baseline justify-between gap-3">
-        <span className="text-xs font-black text-white">{message.user}</span>
-        <span className="shrink-0 text-[10px] text-[#8a96a3]">{message.time}</span>
-      </div>
-      <p className="mt-1 break-words text-sm text-[#e2e8f0]">{message.msg}</p>
-      {message.tag ? (
-        <code className="mt-2 inline-block rounded border border-[#213743] bg-[#1a2c38] px-2 py-0.5 font-mono text-[10px] font-bold text-[#00e701]">
-          {message.tag}
-        </code>
-      ) : null}
-    </div>
-  );
-}
 
 export default function ChatPanel({ messages, online, status, notice, onSend, username }) {
   const [draft, setDraft] = useState('');
   const scrollRef = useRef(null);
+  const isOpen = status === 'open';
 
   // Pin to the newest message, but leave the reader alone if they scrolled up.
   useLayoutEffect(() => {
@@ -54,95 +33,95 @@ export default function ChatPanel({ messages, online, status, notice, onSend, us
     if (onSend({ user: username, msg: trimmed })) setDraft('');
   };
 
-  const isOpen = status === 'open';
-
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
-      <aside className="rounded-xl border border-[#213743] bg-[#1a2c38] p-3 sm:p-4 lg:col-span-1 lg:space-y-4">
-        {/* Compact header row on phones; the full stack returns at lg. */}
-        <div className="flex items-center justify-between gap-3 lg:block">
-          <div className="min-w-0">
-            <h3 className="text-md font-extrabold text-white lg:mb-2">Punter Lounge</h3>
-            <p className="hidden text-xs text-[#8a96a3] lg:block">
-              Real-time synchronization engine connecting users globally over a single
-              WebSocket room.
-            </p>
+    <div>
+      <div className="flex items-start justify-between gap-4 border-b-2 border-nx-div pb-4">
+        <div className="min-w-0">
+          <h1 className="text-[26px] font-extrabold leading-tight sm:text-[30px]">
+            Punter lounge
+          </h1>
+          <p className="mt-1.5 text-[13px] text-nx-muted">
+            {STATUS_COPY[status] ?? STATUS_COPY.disconnected}
+          </p>
+        </div>
+        <div className="shrink-0 text-right">
+          <div className="text-[10px] font-extrabold uppercase tracking-[.05em] text-nx-faint">
+            Online
           </div>
-
-          <div className="flex shrink-0 items-center gap-2 rounded-lg border border-[#213743] bg-[#0f212e] px-3 py-2 lg:mt-4 lg:w-full lg:block lg:px-3 lg:py-3">
-            <div className="hidden text-[10px] font-bold uppercase tracking-wider text-[#8a96a3] lg:mb-1 lg:block">
-              Users Online
-            </div>
-            <div className="flex items-center gap-2">
-              <span
-                className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-                  isOpen ? 'animate-pulse bg-[#00e701]' : 'bg-[#8a96a3]'
-                }`}
-              />
-              <span className="text-lg font-black text-white lg:text-2xl">{online}</span>
-              <span className="text-[10px] uppercase text-[#8a96a3] lg:hidden">online</span>
-            </div>
+          <div className="nx-num text-[24px] font-extrabold leading-none sm:text-[26px]">
+            {online}
           </div>
         </div>
-
-        <p className="mt-2 text-[11px] leading-relaxed text-[#8a96a3] lg:mt-0">
-          {STATUS_COPY[status] ?? STATUS_COPY.disconnected}
-        </p>
-
-        <p className="mt-2 hidden rounded-lg border border-amber-500/25 bg-amber-500/5 p-3 text-[11px] leading-relaxed text-amber-200/80 lg:mt-0 lg:block">
-          Messages here are posted by whoever is connected. Nothing said in the room is
-          verified advice — treat slip codes as unvetted user content.
-        </p>
-      </aside>
-
-      <div className="flex h-[65dvh] min-h-[380px] flex-col overflow-hidden rounded-xl border border-[#213743] bg-[#1a2c38] lg:col-span-3 lg:h-[60vh]">
-        <div ref={scrollRef} className="nexus-scroll flex-1 space-y-4 overflow-y-auto p-4">
-          {messages.length === 0 ? (
-            <p className="pt-8 text-center text-sm text-[#8a96a3]">
-              No messages yet. Say hello to the lounge.
-            </p>
-          ) : (
-            messages.map((message) => (
-              <MessageBubble
-                key={message.id}
-                message={message}
-                isOwn={message.user === username}
-              />
-            ))
-          )}
-        </div>
-
-        {notice ? (
-          <div className="flex items-center gap-2 border-t border-amber-500/25 bg-amber-500/10 px-4 py-2 text-xs text-amber-200">
-            <TriangleAlert className="h-3.5 w-3.5 shrink-0" />
-            <span>{notice}</span>
-          </div>
-        ) : null}
-
-        <form
-          onSubmit={handleSubmit}
-          className="flex items-center gap-2 border-t border-[#213743] bg-[#0f212e] p-3 sm:gap-3 sm:p-4"
-        >
-          <input
-            type="text"
-            value={draft}
-            maxLength={MAX_MESSAGE_LENGTH}
-            onChange={(event) => setDraft(event.target.value)}
-            placeholder={isOpen ? 'Message the lounge…' : 'Reconnecting…'}
-            aria-label="Message the punter lounge"
-            disabled={!isOpen}
-            className="min-h-[44px] w-full min-w-0 flex-1 rounded-lg border border-[#213743] bg-[#1a2c38] px-3 py-2.5 text-base text-white placeholder:text-[#8a96a3] focus:border-[#00e701]/50 focus:outline-none disabled:opacity-50 sm:px-4 sm:text-sm"
-          />
-          <button
-            type="submit"
-            disabled={!isOpen || !draft.trim()}
-            className="flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-lg bg-[#00e701] px-3 py-2.5 text-sm font-black text-black transition hover:bg-[#00c900] disabled:cursor-not-allowed disabled:opacity-40 sm:px-4"
-          >
-            <Send className="h-4 w-4" />
-            <span className="hidden sm:inline">Send</span>
-          </button>
-        </form>
       </div>
+
+      <p className="mt-3 text-[11px] leading-relaxed text-nx-faint">
+        Messages are posted by whoever is connected. Nothing said here is verified advice —
+        treat slip codes shared in the room as unvetted user content.
+      </p>
+
+      <div
+        ref={scrollRef}
+        className="nx-scroll mt-4 max-h-[52dvh] min-h-[340px] overflow-y-auto border border-nx-div px-3"
+      >
+        {messages.length === 0 ? (
+          <p className="py-16 text-center text-[12px] text-nx-faint">
+            No messages yet. Say hello to the lounge.
+          </p>
+        ) : (
+          messages.map((message, index) => (
+            <div
+              key={message.id}
+              className={`py-3 ${index > 0 ? 'border-t border-nx-div' : ''}`}
+            >
+              <div className="flex items-baseline justify-between gap-3">
+                <span
+                  className={`truncate text-[12px] font-bold ${
+                    message.user === username ? 'text-nx-accent' : 'text-nx-text'
+                  }`}
+                >
+                  {message.user}
+                </span>
+                <span className="nx-num shrink-0 text-[11px] text-nx-faint">{message.time}</span>
+              </div>
+              <p className="mt-1 break-words text-[13px] leading-relaxed text-nx-muted">
+                {message.msg}
+              </p>
+              {message.tag ? (
+                <code className="nx-num mt-1.5 inline-block border border-nx-div px-1.5 py-0.5 text-[10px] font-bold text-nx-accent">
+                  {message.tag}
+                </code>
+              ) : null}
+            </div>
+          ))
+        )}
+      </div>
+
+      {notice ? (
+        <p className="mt-2 text-[11px] text-nx-accent-hi">{notice}</p>
+      ) : null}
+
+      <form onSubmit={handleSubmit} className="mt-3 flex gap-2">
+        <label className="sr-only" htmlFor="nx-composer">
+          Message the punter lounge
+        </label>
+        <input
+          id="nx-composer"
+          type="text"
+          value={draft}
+          maxLength={MAX_MESSAGE_LENGTH}
+          onChange={(event) => setDraft(event.target.value)}
+          placeholder={isOpen ? 'Message the lounge…' : 'Reconnecting…'}
+          disabled={!isOpen}
+          className="min-h-[44px] w-full min-w-0 flex-1 border border-nx-div bg-nx-surface px-3 text-[16px] text-nx-text placeholder:text-nx-faint disabled:opacity-50 sm:text-[13px]"
+        />
+        <button
+          type="submit"
+          disabled={!isOpen || !draft.trim()}
+          className="min-h-[44px] shrink-0 bg-nx-accent px-4 text-[12px] font-extrabold uppercase tracking-[.05em] text-nx-bg disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Send
+        </button>
+      </form>
     </div>
   );
 }

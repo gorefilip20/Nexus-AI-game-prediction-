@@ -1,13 +1,31 @@
 @import 'tailwindcss';
 
+/* Self-hosted so the app makes no third-party request and needs no CSP change
+   for an external font host. */
+@import '@fontsource-variable/archivo';
+
+/**
+ * Modernist tokens.
+ *
+ * One accent, used only where it carries meaning: live connection, the active
+ * tab, a primary action, a high-confidence flag, a settled win. Everything else
+ * is text, muted, faint or a rule. Radius is zero throughout — the corners are
+ * the design's signature, not an oversight.
+ */
 @theme {
-  --color-nexus-bg: #0f212e;
-  --color-nexus-panel: #1a2c38;
-  --color-nexus-border: #213743;
-  --color-nexus-border-strong: #2f4553;
-  --color-nexus-accent: #00e701;
-  --color-nexus-muted: #8a96a3;
-  --color-nexus-text: #b1b6c0;
+  --color-nx-bg: #0b0d0b;
+  --color-nx-surface: #141712;
+  --color-nx-surface-2: #1d2118;
+  --color-nx-text: #f2f5ef;
+  --color-nx-muted: #a9b3a4;
+  --color-nx-faint: #6c766a;
+  --color-nx-div: #2b3227;
+  --color-nx-accent: #22c55e;
+  --color-nx-accent-hi: #4ade80;
+  --color-nx-accent-lo: #16803c;
+
+  --font-sans: 'Archivo Variable', system-ui, sans-serif;
+  --radius-none: 0;
 }
 
 html,
@@ -18,17 +36,52 @@ body,
 
 body {
   margin: 0;
-  background-color: var(--color-nexus-bg);
+  background-color: var(--color-nx-bg);
+  color: var(--color-nx-text);
+  font-family: 'Archivo Variable', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Slim scrollbars keep the chat column consistent with the dark panels. */
-.nexus-scroll::-webkit-scrollbar {
-  width: 8px;
+/* Numbers are the content here. Tabular figures keep odds and percentages in
+   column whatever the digits are. */
+.nx-num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
 }
-.nexus-scroll::-webkit-scrollbar-track {
+
+/* One visible focus treatment for every interactive element. */
+:focus-visible {
+  outline: 2px solid var(--color-nx-accent);
+  outline-offset: 2px;
+}
+
+.nx-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.nx-scroll::-webkit-scrollbar-track {
   background: transparent;
 }
-.nexus-scroll::-webkit-scrollbar-thumb {
-  background: var(--color-nexus-border);
-  border-radius: 9999px;
+.nx-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-nx-div);
+}
+
+/* The live indicator is the one piece of motion in the design. */
+@keyframes nx-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.nx-live-dot {
+  animation: nx-pulse 2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nx-live-dot {
+    animation: none;
+  }
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+  }
 }
